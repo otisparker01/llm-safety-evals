@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sandbagging-eval"
+version = "0.1.0"
+description = "An Inspect eval for measuring sandbagging (strategic underperformance) in language models."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "inspect-ai>=0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+# Local, OpenAI-compatible providers (Ollama, llama-cpp-python, vLLM, ...).
+# Ollama exposes an OpenAI-compatible backend, so Inspect's ollama/* provider
+# needs the openai client package.
+local = [
+    "openai>=1.0",
+]
+
+[tool.setuptools]
+packages = ["sandbagging"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

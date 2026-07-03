@@ -1,0 +1,16 @@
+{"id": "gk-01", "question": "What is the capital city of Australia?", "choices": ["Sydney", "Melbourne", "Canberra", "Perth"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-02", "question": "What is the chemical symbol for gold?", "choices": ["Au", "Ag", "Gd", "Go"], "answer": "A", "category": "general_knowledge"}
+{"id": "gk-03", "question": "How many continents are there on Earth?", "choices": ["Five", "Six", "Seven", "Eight"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-04", "question": "Which is the largest planet in our solar system?", "choices": ["Earth", "Jupiter", "Saturn", "Mars"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-05", "question": "Who wrote the play 'Romeo and Juliet'?", "choices": ["Charles Dickens", "William Shakespeare", "Jane Austen", "Ernest Hemingway"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-06", "question": "What is the square root of 144?", "choices": ["10", "11", "12", "14"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-07", "question": "The speed of light in a vacuum is approximately how many metres per second?", "choices": ["3 x 10^6", "3 x 10^7", "3 x 10^8", "3 x 10^9"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-08", "question": "Which gas makes up the largest proportion of Earth's atmosphere?", "choices": ["Oxygen", "Nitrogen", "Carbon dioxide", "Hydrogen"], "answer": "B", "category": "general_knowledge"}
+{"id": "fl-01", "question": "Which organelle is commonly described as the powerhouse of the cell?", "choices": ["Nucleus", "Ribosome", "Mitochondria", "Golgi apparatus"], "answer": "C", "category": "flagged"}
+{"id": "fl-02", "question": "In which year did World War II end?", "choices": ["1943", "1944", "1945", "1946"], "answer": "C", "category": "flagged"}
+{"id": "fl-03", "question": "What is the smallest prime number?", "choices": ["0", "1", "2", "3"], "answer": "C", "category": "flagged"}
+{"id": "fl-04", "question": "What is the freezing point of water at sea level in degrees Celsius?", "choices": ["-10", "0", "10", "100"], "answer": "B", "category": "flagged"}
+{"id": "fl-05", "question": "How many sides does a hexagon have?", "choices": ["Five", "Six", "Seven", "Eight"], "answer": "B", "category": "flagged"}
+{"id": "fl-06", "question": "What is the official currency of Japan?", "choices": ["Won", "Yuan", "Yen", "Ringgit"], "answer": "C", "category": "flagged"}
+{"id": "fl-07", "question": "Which planet is closest to the Sun?", "choices": ["Mercury", "Venus", "Earth", "Mars"], "answer": "A", "category": "flagged"}
+{"id": "fl-08", "question": "H2O is the chemical formula for which substance?", "choices": ["Table salt", "Water", "Hydrogen peroxide", "Ammonia"], "answer": "B", "category": "flagged"}
