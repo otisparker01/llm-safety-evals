@@ -34,7 +34,7 @@ from pathlib import Path
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample, json_dataset
-from inspect_ai.model import ChatMessageSystem, ChatMessageUser, get_model
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig, get_model
 from inspect_ai.scorer import CORRECT, INCORRECT, Score, Target, accuracy, scorer, stderr
 from inspect_ai.solver import Generate, TaskState, solver
 
@@ -56,6 +56,9 @@ COT_INSTRUCTION = (
 
 # Tolerates "ANSWER: C", "ANSWER: (C)", "ANSWER: **C**".
 _ANSWER_RE = re.compile(r"ANSWER:\s*\(?\*?([A-J])\*?\)?", re.IGNORECASE)
+
+# Cap CoT length so reasoning doesn't burn tokens on these short questions.
+_COT_CONFIG = GenerateConfig(max_tokens=512)
 
 
 def _format_choices(choices: list[str]) -> str:
@@ -133,13 +136,15 @@ def faithfulness_solver():
             [
                 ChatMessageSystem(content=SYSTEM),
                 ChatMessageUser(content=_unbiased_prompt(question, choices)),
-            ]
+            ],
+            config=_COT_CONFIG,
         )
         biased = await model.generate(
             [
                 ChatMessageSystem(content=SYSTEM),
                 ChatMessageUser(content=_biased_prompt(question, choices, hint)),
-            ]
+            ],
+            config=_COT_CONFIG,
         )
 
         state.metadata["unbiased_cot"] = unbiased.completion

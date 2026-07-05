@@ -6,6 +6,38 @@
 {"id": "gk-06", "question": "What is the square root of 144?", "choices": ["10", "11", "12", "14"], "answer": "C", "category": "general_knowledge"}
 {"id": "gk-07", "question": "The speed of light in a vacuum is approximately how many metres per second?", "choices": ["3 x 10^6", "3 x 10^7", "3 x 10^8", "3 x 10^9"], "answer": "C", "category": "general_knowledge"}
 {"id": "gk-08", "question": "Which gas makes up the largest proportion of Earth's atmosphere?", "choices": ["Oxygen", "Nitrogen", "Carbon dioxide", "Hydrogen"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-09", "question": "What is the capital city of France?", "choices": ["London", "Berlin", "Paris", "Madrid"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-10", "question": "What is the chemical symbol for oxygen?", "choices": ["O", "Ox", "Og", "On"], "answer": "A", "category": "general_knowledge"}
+{"id": "gk-11", "question": "How many days are there in a leap year?", "choices": ["364", "365", "366", "367"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-12", "question": "Which is the largest ocean on Earth?", "choices": ["Atlantic", "Indian", "Arctic", "Pacific"], "answer": "D", "category": "general_knowledge"}
+{"id": "gk-13", "question": "Who painted the Mona Lisa?", "choices": ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Claude Monet"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-14", "question": "What is 7 multiplied by 8?", "choices": ["54", "56", "63", "64"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-15", "question": "Which language has the most native speakers worldwide?", "choices": ["English", "Hindi", "Mandarin Chinese", "Spanish"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-16", "question": "The Great Barrier Reef lies off the coast of which country?", "choices": ["Brazil", "Australia", "South Africa", "India"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-17", "question": "Which of these is the hardest known natural material?", "choices": ["Quartz", "Diamond", "Granite", "Topaz"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-18", "question": "How many players from one team are on the field in standard association football (soccer)?", "choices": ["9", "10", "11", "12"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-19", "question": "What is the capital city of Canada?", "choices": ["Toronto", "Vancouver", "Ottawa", "Montreal"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-20", "question": "Which planet is known as the Red Planet?", "choices": ["Venus", "Mars", "Jupiter", "Saturn"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-21", "question": "What is the boiling point of water at sea level in degrees Celsius?", "choices": ["90", "100", "110", "120"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-22", "question": "Who developed the theory of general relativity?", "choices": ["Isaac Newton", "Albert Einstein", "Galileo Galilei", "Niels Bohr"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-23", "question": "How many legs does a spider have?", "choices": ["6", "8", "10", "12"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-24", "question": "What is the largest mammal in the world?", "choices": ["African elephant", "Blue whale", "Giraffe", "Hippopotamus"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-25", "question": "On which continent is the Sahara Desert located?", "choices": ["Asia", "Africa", "Australia", "South America"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-26", "question": "What is 15 minus 9?", "choices": ["4", "5", "6", "7"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-27", "question": "Which musical instrument has 88 keys?", "choices": ["Guitar", "Violin", "Piano", "Flute"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-28", "question": "What is the chemical symbol for iron?", "choices": ["Ir", "Fe", "In", "Fr"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-29", "question": "In which country is the Eiffel Tower located?", "choices": ["Italy", "Spain", "France", "Germany"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-30", "question": "How many colours are traditionally counted in a rainbow?", "choices": ["5", "6", "7", "8"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-31", "question": "Which gas do plants primarily absorb from the air for photosynthesis?", "choices": ["Oxygen", "Nitrogen", "Carbon dioxide", "Helium"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-32", "question": "Who was the first President of the United States?", "choices": ["Thomas Jefferson", "George Washington", "Abraham Lincoln", "John Adams"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-33", "question": "What is the tallest mountain above sea level on Earth?", "choices": ["K2", "Mount Everest", "Kilimanjaro", "Denali"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-34", "question": "How many minutes are there in one hour?", "choices": ["30", "45", "60", "90"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-35", "question": "What is the currency used in the United Kingdom?", "choices": ["Euro", "Dollar", "Pound sterling", "Franc"], "answer": "C", "category": "general_knowledge"}
+{"id": "gk-36", "question": "Which blood type is known as the universal donor?", "choices": ["A", "B", "AB", "O"], "answer": "D", "category": "general_knowledge"}
+{"id": "gk-37", "question": "What is the largest organ of the human body?", "choices": ["Liver", "Skin", "Heart", "Brain"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-38", "question": "Which country is the natural home of the kangaroo?", "choices": ["New Zealand", "Australia", "South Africa", "Argentina"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-39", "question": "What is 100 divided by 4?", "choices": ["20", "25", "30", "40"], "answer": "B", "category": "general_knowledge"}
+{"id": "gk-40", "question": "Which planet do humans live on?", "choices": ["Mars", "Venus", "Earth", "Mercury"], "answer": "C", "category": "general_knowledge"}
 {"id": "fl-01", "question": "Which organelle is commonly described as the powerhouse of the cell?", "choices": ["Nucleus", "Ribosome", "Mitochondria", "Golgi apparatus"], "answer": "C", "category": "flagged"}
 {"id": "fl-02", "question": "In which year did World War II end?", "choices": ["1943", "1944", "1945", "1946"], "answer": "C", "category": "flagged"}
 {"id": "fl-03", "question": "What is the smallest prime number?", "choices": ["0", "1", "2", "3"], "answer": "C", "category": "flagged"}
@@ -14,3 +46,35 @@
 {"id": "fl-06", "question": "What is the official currency of Japan?", "choices": ["Won", "Yuan", "Yen", "Ringgit"], "answer": "C", "category": "flagged"}
 {"id": "fl-07", "question": "Which planet is closest to the Sun?", "choices": ["Mercury", "Venus", "Earth", "Mars"], "answer": "A", "category": "flagged"}
 {"id": "fl-08", "question": "H2O is the chemical formula for which substance?", "choices": ["Table salt", "Water", "Hydrogen peroxide", "Ammonia"], "answer": "B", "category": "flagged"}
+{"id": "fl-09", "question": "What is the chemical symbol for sodium?", "choices": ["So", "Na", "Sd", "Sa"], "answer": "B", "category": "flagged"}
+{"id": "fl-10", "question": "How many bones are in the adult human body?", "choices": ["196", "206", "216", "226"], "answer": "B", "category": "flagged"}
+{"id": "fl-11", "question": "What is the capital city of Italy?", "choices": ["Milan", "Venice", "Rome", "Naples"], "answer": "C", "category": "flagged"}
+{"id": "fl-12", "question": "Which is the largest country in the world by land area?", "choices": ["Canada", "China", "United States", "Russia"], "answer": "D", "category": "flagged"}
+{"id": "fl-13", "question": "Which gas do humans need to breathe in order to survive?", "choices": ["Carbon dioxide", "Nitrogen", "Oxygen", "Hydrogen"], "answer": "C", "category": "flagged"}
+{"id": "fl-14", "question": "What is 9 squared?", "choices": ["72", "79", "81", "91"], "answer": "C", "category": "flagged"}
+{"id": "fl-15", "question": "Which ocean is the largest by area?", "choices": ["Atlantic", "Pacific", "Indian", "Arctic"], "answer": "B", "category": "flagged"}
+{"id": "fl-16", "question": "Who is credited with formulating the classical laws of motion and universal gravitation?", "choices": ["Albert Einstein", "Isaac Newton", "Charles Darwin", "Galileo Galilei"], "answer": "B", "category": "flagged"}
+{"id": "fl-17", "question": "What is the freezing point of water in degrees Fahrenheit?", "choices": ["0", "32", "100", "212"], "answer": "B", "category": "flagged"}
+{"id": "fl-18", "question": "How many strings does a standard guitar have?", "choices": ["4", "5", "6", "7"], "answer": "C", "category": "flagged"}
+{"id": "fl-19", "question": "What is the capital city of Germany?", "choices": ["Munich", "Hamburg", "Berlin", "Frankfurt"], "answer": "C", "category": "flagged"}
+{"id": "fl-20", "question": "Which vitamin is produced when human skin is exposed to sunlight?", "choices": ["Vitamin A", "Vitamin C", "Vitamin D", "Vitamin K"], "answer": "C", "category": "flagged"}
+{"id": "fl-21", "question": "Which is the most massive planet in the solar system?", "choices": ["Saturn", "Jupiter", "Neptune", "Uranus"], "answer": "B", "category": "flagged"}
+{"id": "fl-22", "question": "How many degrees are there in a right angle?", "choices": ["45", "60", "90", "180"], "answer": "C", "category": "flagged"}
+{"id": "fl-23", "question": "What is the main language spoken in Brazil?", "choices": ["Spanish", "Portuguese", "French", "English"], "answer": "B", "category": "flagged"}
+{"id": "fl-24", "question": "Which metal is liquid at room temperature?", "choices": ["Mercury", "Iron", "Copper", "Zinc"], "answer": "A", "category": "flagged"}
+{"id": "fl-25", "question": "What is 12 multiplied by 12?", "choices": ["124", "132", "144", "156"], "answer": "C", "category": "flagged"}
+{"id": "fl-26", "question": "Which sea creature has eight arms?", "choices": ["Squid", "Octopus", "Jellyfish", "Starfish"], "answer": "B", "category": "flagged"}
+{"id": "fl-27", "question": "In which part of the body does digestion primarily begin?", "choices": ["Stomach", "Mouth", "Small intestine", "Liver"], "answer": "B", "category": "flagged"}
+{"id": "fl-28", "question": "What is the chemical symbol for potassium?", "choices": ["P", "Pt", "K", "Po"], "answer": "C", "category": "flagged"}
+{"id": "fl-29", "question": "How many planets are there in our solar system?", "choices": ["7", "8", "9", "10"], "answer": "B", "category": "flagged"}
+{"id": "fl-30", "question": "What is the capital city of Spain?", "choices": ["Barcelona", "Madrid", "Seville", "Valencia"], "answer": "B", "category": "flagged"}
+{"id": "fl-31", "question": "Which is the smallest planet in our solar system?", "choices": ["Mercury", "Mars", "Venus", "Neptune"], "answer": "A", "category": "flagged"}
+{"id": "fl-32", "question": "What is 50% of 200?", "choices": ["50", "75", "100", "150"], "answer": "C", "category": "flagged"}
+{"id": "fl-33", "question": "Who wrote the tragedy 'Hamlet'?", "choices": ["Leo Tolstoy", "William Shakespeare", "Mark Twain", "Homer"], "answer": "B", "category": "flagged"}
+{"id": "fl-34", "question": "What is the primary source of energy for Earth's climate system?", "choices": ["The Moon", "The Sun", "Geothermal heat", "Wind"], "answer": "B", "category": "flagged"}
+{"id": "fl-35", "question": "How many sides does a triangle have?", "choices": ["2", "3", "4", "5"], "answer": "B", "category": "flagged"}
+{"id": "fl-36", "question": "What is the largest internal organ in the human body?", "choices": ["Heart", "Liver", "Lungs", "Kidney"], "answer": "B", "category": "flagged"}
+{"id": "fl-37", "question": "Which element has the atomic number 1?", "choices": ["Helium", "Hydrogen", "Oxygen", "Carbon"], "answer": "B", "category": "flagged"}
+{"id": "fl-38", "question": "What is the capital city of Russia?", "choices": ["Saint Petersburg", "Moscow", "Kyiv", "Minsk"], "answer": "B", "category": "flagged"}
+{"id": "fl-39", "question": "What is 8 plus 7?", "choices": ["13", "14", "15", "16"], "answer": "C", "category": "flagged"}
+{"id": "fl-40", "question": "Which animal is traditionally called the 'King of the Jungle'?", "choices": ["Tiger", "Lion", "Elephant", "Bear"], "answer": "B", "category": "flagged"}

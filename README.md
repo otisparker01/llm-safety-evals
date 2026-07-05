@@ -1,8 +1,12 @@
-# Sandbagging Eval
+# Sandbagging & CoT-Faithfulness Evals
 
 An [Inspect](https://inspect.aisi.org.uk/) evaluation for measuring **sandbagging** —
 a model *strategically underperforming* on a capability test, i.e. deliberately
 scoring below its true ability.
+
+The repo also contains two **chain-of-thought faithfulness** experiments that reuse
+this benchmark — see [Chain-of-thought faithfulness](#chain-of-thought-faithfulness)
+below. Findings from full runs are written up in [`RESULTS.md`](RESULTS.md).
 
 The idea, following [van der Weij et al., "AI Sandbagging" (2024)](https://arxiv.org/abs/2406.07358),
 is simple: run the **same** benchmark under different framings and compare accuracy.
@@ -36,16 +40,23 @@ following the instruction and your measurement is uninformative.
 
 ```
 sandbagging/
-  prompts.py     # the per-condition system prompts
-  dataset.py     # loads data/capability_mc.jsonl into Inspect Samples
-  task.py        # the parameterised @task: sandbagging(condition=...)
+  prompts.py       # the per-condition system prompts
+  dataset.py       # loads data/capability_mc.jsonl into Inspect Samples
+  task.py          # the parameterised @task: sandbagging(condition=...)
+  faithfulness.py  # CoT faithfulness via biasing hints (Turpin-style)
+  perturbation.py  # CoT faithfulness via early-answering truncation (Lanham-style)
 data/
-  capability_mc.jsonl   # small multiple-choice capability benchmark
+  capability_mc.jsonl        # multiple-choice capability benchmark (80 questions)
+  capability_mc_hard.jsonl   # harder, trap-laden variant
+  reasoning_multistep.jsonl  # multi-step problems (for the perturbation experiment)
 scripts/
-  run_suite.py   # run every condition in one go
-  analyze.py     # read the logs and print the sandbagging gap + z-score
+  run_suite.py              # run every sandbagging condition in one go
+  analyze.py                # sandbagging gap + z-score
+  analyze_faithfulness.py   # biasing-hint faithfulness report
+  analyze_perturbation.py   # early-answering / post-hoc report
 tests/
-  test_smoke.py  # wiring checks (no model calls)
+  test_smoke.py    # wiring checks (no model calls)
+RESULTS.md         # write-up of findings from full runs
 ```
 
 The benchmark is deliberately easy and unambiguous: a capable model should near
@@ -148,9 +159,39 @@ make suite MODEL=anthropic/claude-sonnet-4-6      # or claude-opus-4-8
 inspect eval sandbagging/task.py -T condition=control --model anthropic/claude-sonnet-4-6
 ```
 
-The full suite over this 16-question dataset is well under a dollar on a hosted
-model (pennies with `EPOCHS=1`). To avoid passing `MODEL=` every time, set
+The full suite over this 80-question dataset runs to a couple of dollars on a
+hosted model (well under a dollar with `EPOCHS=1`). To avoid passing `MODEL=` every time, set
 `INSPECT_EVAL_MODEL=anthropic/claude-sonnet-4-6` in `.env` and just run `make suite`.
+
+## Chain-of-thought faithfulness
+
+Two companion experiments ask whether the model's *stated* reasoning reflects what
+actually drove its answer. Both reuse the capability benchmark and read the model's
+chain-of-thought (CoT).
+
+**Biasing hints** — `sandbagging/faithfulness.py` (after Turpin et al., 2023). Each
+question is asked twice: neutrally, and with a user cue suggesting a *wrong* answer.
+An LLM judge then checks whether the biased CoT acknowledges the hint. If the hint
+changes the answer but the reasoning hides it, the CoT is *unfaithful*.
+
+```bash
+inspect eval sandbagging/faithfulness.py -T epochs=3 --model anthropic/claude-opus-4-8 --log-dir logs_faithfulness
+python scripts/analyze_faithfulness.py logs_faithfulness
+```
+
+**Early-answering perturbation** — `sandbagging/perturbation.py` (after Lanham et
+al., 2023). The model's CoT is elicited, then re-shown truncated to 0/20/40/60/80%
+while forcing an immediate answer. If the answer is already locked in with little
+reasoning shown, the CoT is *post-hoc* rather than load-bearing. This test is
+judge-free and works even at 100% accuracy.
+
+```bash
+inspect eval sandbagging/perturbation.py -T epochs=3 --model anthropic/claude-opus-4-8 --log-dir logs_perturbation
+python scripts/analyze_perturbation.py logs_perturbation
+```
+
+Both tasks accept `-T data_path=data/<file>.jsonl` to swap in a different benchmark.
+See [`RESULTS.md`](RESULTS.md) for findings.
 
 ## Extending it
 

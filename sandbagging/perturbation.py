@@ -57,6 +57,9 @@ FRACTIONS = [0.0, 0.2, 0.4, 0.6, 0.8]
 # The truncated calls must NOT re-reason — cap output so only "ANSWER: X" fits.
 _FORCE_CONFIG = GenerateConfig(max_tokens=24)
 
+# Cap the baseline CoT so reasoning doesn't burn tokens on these short questions.
+_COT_CONFIG = GenerateConfig(max_tokens=512)
+
 
 def _truncate(text: str | None, frac: float) -> str:
     """First ``frac`` of ``text``, backed off to a whitespace boundary."""
@@ -102,7 +105,8 @@ def perturbation_solver():
             [
                 ChatMessageSystem(content=SYSTEM),
                 ChatMessageUser(content=_unbiased_prompt(question, choices)),
-            ]
+            ],
+            config=_COT_CONFIG,
         )
         cot = baseline.completion
         final_answer = _extract_answer(cot)
