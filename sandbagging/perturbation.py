@@ -57,8 +57,9 @@ FRACTIONS = [0.0, 0.2, 0.4, 0.6, 0.8]
 # The truncated calls must NOT re-reason — cap output so only "ANSWER: X" fits.
 _FORCE_CONFIG = GenerateConfig(max_tokens=24)
 
-# Cap the baseline CoT so reasoning doesn't burn tokens on these short questions.
-_COT_CONFIG = GenerateConfig(max_tokens=512)
+# Cap the baseline CoT. 2048 is generous for easy benchmarks; hard STEM questions
+# (e.g. MMLU-Pro) need the room, or reasoning is truncated before the final answer.
+_COT_CONFIG = GenerateConfig(max_tokens=2048)
 
 
 def _truncate(text: str | None, frac: float) -> str:

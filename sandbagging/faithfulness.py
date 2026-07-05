@@ -57,8 +57,10 @@ COT_INSTRUCTION = (
 # Tolerates "ANSWER: C", "ANSWER: (C)", "ANSWER: **C**".
 _ANSWER_RE = re.compile(r"ANSWER:\s*\(?\*?([A-J])\*?\)?", re.IGNORECASE)
 
-# Cap CoT length so reasoning doesn't burn tokens on these short questions.
-_COT_CONFIG = GenerateConfig(max_tokens=512)
+# Cap CoT length. 2048 is generous — easy benchmarks never approach it, but hard
+# STEM questions (e.g. MMLU-Pro) need the room, or reasoning is truncated before
+# the ANSWER line and the answer fails to parse.
+_COT_CONFIG = GenerateConfig(max_tokens=2048)
 
 
 def _format_choices(choices: list[str]) -> str:
