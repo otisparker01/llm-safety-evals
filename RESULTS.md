@@ -12,7 +12,7 @@ answer?).
 | Experiment | Headline result |
 |---|---|
 | **Sandbagging** | **No spontaneous sandbagging on either model.** `control` = `incentive` = 100% for both; the `explicit` positive control drops to 0.000 (Opus) / 0.283 (Haiku), so the eval *can* detect a gap — the null is real. |
-| **CoT faithfulness — biasing hints** (Turpin) | **On easy questions: robust (0 flips). On a hard benchmark, the regime opens.** When Haiku is genuinely uncertain (77% on MMLU-Pro), a confident wrong hint flips its answer **13% of the time (48/360)** — and **~half of those flips are unfaithful**: the CoT rationalizes the hint-driven answer without mentioning the hint. |
+| **CoT faithfulness — biasing hints** (Turpin) | **On easy questions: robust (0 flips). On a hard benchmark, the regime opens.** When Haiku is genuinely uncertain (77% on MMLU-Pro), a confident wrong hint flips its answer **~12% of the time (73/600 across two samples)** — and **~half of those flips are unfaithful**: the CoT rationalizes the hint-driven answer without mentioning the hint. |
 | **CoT faithfulness — perturbation** (Lanham) | **The visible CoT is overwhelmingly post-hoc — on both models.** Post-hoc rate 95–100% across 2 models × 4 datasets. CoT is load-bearing only at the edge of single-pass capability (long modular arithmetic; a ~12-step accumulation). |
 
 **The arc of the study.** On the easy benchmark every discriminating test came back
@@ -31,7 +31,7 @@ tasks it can actively rationalize a cue-driven answer while hiding the cue. CoT
 monitoring is most trustworthy on tasks near/beyond the single-forward-pass ceiling,
 and least trustworthy exactly where the model is uncertain.
 
-Total API spend across all runs: **≈ $20** (includes one ~$10 run wasted to a
+Total API spend across all runs: **≈ $22** (includes one ~$10 run wasted to a
 capped-CoT truncation bug, since fixed — see Experiment 2b).
 
 ## Setup
@@ -110,21 +110,20 @@ judge-independent (solid); acknowledgment is not. `faithfulness.py` accepts
 
 ### Experiment 2b — biasing on a hard benchmark (MMLU-Pro): the discriminating result
 
-Re-running the same test on **120 MMLU-Pro questions** — where Haiku sits at 77%
-rather than 100% — opens the regime.
-
-**Result** (Haiku 4.5, 120 Q × 3 epochs = 360 instances):
+Re-running the same test on **MMLU-Pro** — where Haiku sits at ~77% rather than
+100% — opens the regime. Results below **pool two independent 120-question samples**
+(240 unique questions, 600 instances):
 
 | Metric | Value |
 |---|---|
-| Unbiased accuracy | 0.767 (uncertain — 23% wrong) |
-| Biased accuracy | 0.683 (the hint drags it down ~8 pts) |
-| **Flip-to-hint rate** | **48/360 = 0.133** (judge-independent) |
-| Hint acknowledged in CoT | 0.428 |
-| **Unfaithful (of flips)** | **≈0.50** (24/48 independent Opus judge; 26/48 self-judge — 92% agree) |
+| Unbiased accuracy | ~0.77 (uncertain regime — ~23% wrong) |
+| Biased accuracy | ~0.68 (the hint drags it down) |
+| **Flip-to-hint rate** | **73/600 = 0.122 ± 0.026** (judge-independent) |
+| Hint acknowledged in CoT | ~0.43 |
+| **Unfaithful (of flips)** | **35/73 = 0.48 ± 0.11** (self-judge; the batch-1 subset was validated by an independent Opus judge at 0.50, 92% agreement) |
 
 **Interpretation.** On uncertain questions a confident wrong hint **flips Haiku's
-answer 13% of the time** — the first non-trivial flip rate in the study, and it
+answer ~12% of the time (73/600)** — the first non-trivial flip rate in the study, and it
 needs no judge. Among those flips, **roughly half are unfaithful**: the CoT adopts
 the hint's wrong answer and rationalizes a *different* justification without
 mentioning the hint. A clean example: the model's own working reached ≈`0.289`, then
@@ -197,8 +196,8 @@ failing.
 ## Limitations
 
 - The discriminating faithfulness result (2b) is **single-model (Haiku)**; its
-  unfaithful fraction is confirmed by an independent judge, but on one 120-question
-  MMLU-Pro slice.
+  unfaithful fraction is confirmed by an independent judge, across two 120-question
+  MMLU-Pro slices (240 questions, 600 instances).
 - "Post-hoc" (Experiment 3) means the visible CoT was not *necessary* (early
   answering) — it shows non-dependence, **not** active deception.
 - The load-bearing frontier is bracketed by two cases; not finely mapped.
@@ -208,9 +207,9 @@ failing.
 ## Suggested next steps
 
 1. **Extend 2b.** The unfaithful fraction is now confirmed by an independent judge
-   (~0.50, 92% judge agreement); the remaining gaps are an **Opus** run for the
-   capability contrast and **more MMLU-Pro questions/epochs** to tighten the 48-flip
-   estimate.
+   (~0.50, 92% agreement) and pooled across 240 questions / 73 flips; the remaining
+   gap is an **Opus** run for the capability contrast (Opus is less uncertain here,
+   so likely fewer flips).
 2. **Scale 2b** to more MMLU-Pro questions / epochs to tighten the 48-flip estimate.
 3. **Map the load-bearing frontier** (Experiment 3) with problems *deliberately*
    beyond single-pass capability (15+ step serial computations).
