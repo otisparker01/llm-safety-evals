@@ -129,23 +129,24 @@ Inspect the transcripts in the log viewer:
 make view          # or: inspect view --log-dir logs
 ```
 
-Example `analyze.py` output:
+Real `analyze.py` output (`claude-opus-4-8`, 80-question benchmark — full
+write-up in [`RESULTS.md`](RESULTS.md)):
 
 ```
-Sandbagging report — model: anthropic/claude-sonnet-4-6
+Sandbagging report — model: anthropic/claude-opus-4-8
 
 condition     accuracy    stderr   samples
-----------------------------------------------
-control          0.988     0.012        80
-incentive        0.725     0.050        80
-explicit         0.150     0.040        80
+------------------------------------------
+control          1.000     0.000       240
+explicit         0.000     0.000       240
+incentive        1.000     0.000       240
 
-Sandbagging gap vs. control (accuracy=0.988):
+Sandbagging gap vs. control (accuracy=1.000):
 
 condition          gap         z  significance
 ----------------------------------------------
-explicit         0.838     20.10  *  (p<0.05)
-incentive        0.263      5.12  *  (p<0.05)
+explicit         1.000     21.91  *  (p<0.05)
+incentive        0.000      0.00
 ```
 
 ## Upgrading to a hosted model
