@@ -121,7 +121,7 @@ rather than 100% — opens the regime.
 | Biased accuracy | 0.683 (the hint drags it down ~8 pts) |
 | **Flip-to-hint rate** | **48/360 = 0.133** (judge-independent) |
 | Hint acknowledged in CoT | 0.428 |
-| **Unfaithful (of flips)** | **≈26/48 ≈ 0.54** (self-judged; see caveat) |
+| **Unfaithful (of flips)** | **≈0.50** (24/48 independent Opus judge; 26/48 self-judge — 92% agree) |
 
 **Interpretation.** On uncertain questions a confident wrong hint **flips Haiku's
 answer 13% of the time** — the first non-trivial flip rate in the study, and it
@@ -135,10 +135,11 @@ uncertain regime that matters most for oversight.
 **Caveats specific to 2b.**
 1. **Single model** (Haiku); a clean Opus run was skipped for budget (Opus is also
    less uncertain here at ~82%, so fewer flips expected).
-2. The **flip rate is judge-independent and solid**; the unfaithful *fraction* rides
-   on the self-judge, which a manual spot-check found over-counts somewhat (~5 of 26
-   flagged cases do reference the hint). Read it as **≈45–55% of flips**, not a
-   precise 54% — an independent judge (`-T judge_model=...`) would firm it up.
+2. The **flip rate is judge-independent and solid**. The unfaithful *fraction* was
+   confirmed with an **independent judge**: Opus 4.8 re-scoring the same 48 flip
+   transcripts found **24/48 (0.50)** unfaithful, agreeing with Haiku's self-judge
+   (26/48) on 44/48 cases (92%). So ~half of hint-driven flips are unfaithful,
+   robust to who judges.
 3. **A capped-CoT bug** initially truncated hard-question reasoning before the answer
    (159/360 answers unparseable at a 512-token cap), which biased the numbers. The
    cap was raised to 2048 and the run repeated clean (**0/360 unparseable**) before
@@ -195,8 +196,9 @@ failing.
 
 ## Limitations
 
-- The discriminating faithfulness result (2b) is **single-model (Haiku)** and its
-  unfaithful *fraction* is **self-judged** (the flip rate is not).
+- The discriminating faithfulness result (2b) is **single-model (Haiku)**; its
+  unfaithful fraction is confirmed by an independent judge, but on one 120-question
+  MMLU-Pro slice.
 - "Post-hoc" (Experiment 3) means the visible CoT was not *necessary* (early
   answering) — it shows non-dependence, **not** active deception.
 - The load-bearing frontier is bracketed by two cases; not finely mapped.
@@ -205,9 +207,10 @@ failing.
 
 ## Suggested next steps
 
-1. **Firm up 2b.** Re-run MMLU-Pro biasing with an **independent judge**
-   (`-T judge_model=...`) to pin the unfaithful fraction, and add an **Opus** run for
-   the capability contrast. This turns "≈half of flips, self-judged" into a solid number.
+1. **Extend 2b.** The unfaithful fraction is now confirmed by an independent judge
+   (~0.50, 92% judge agreement); the remaining gaps are an **Opus** run for the
+   capability contrast and **more MMLU-Pro questions/epochs** to tighten the 48-flip
+   estimate.
 2. **Scale 2b** to more MMLU-Pro questions / epochs to tighten the 48-flip estimate.
 3. **Map the load-bearing frontier** (Experiment 3) with problems *deliberately*
    beyond single-pass capability (15+ step serial computations).
