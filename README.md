@@ -155,14 +155,14 @@ Nothing in the eval is tied to Ollama — switching models is a one-word overrid
 Add the provider key to `.env` (`cp .env.example .env`), then point `MODEL` at it:
 
 ```bash
-make suite MODEL=anthropic/claude-sonnet-4-6      # or claude-opus-4-8
+make suite MODEL=anthropic/claude-opus-4-8      # or claude-haiku-4-5
 # one condition at a time:
-inspect eval sandbagging/task.py -T condition=control --model anthropic/claude-sonnet-4-6
+inspect eval sandbagging/task.py -T condition=control --model anthropic/claude-opus-4-8
 ```
 
 The full suite over this 80-question dataset runs to a couple of dollars on a
 hosted model (well under a dollar with `EPOCHS=1`). To avoid passing `MODEL=` every time, set
-`INSPECT_EVAL_MODEL=anthropic/claude-sonnet-4-6` in `.env` and just run `make suite`.
+`INSPECT_EVAL_MODEL=anthropic/claude-opus-4-8` in `.env` and just run `make suite`.
 
 ## Chain-of-thought faithfulness
 
