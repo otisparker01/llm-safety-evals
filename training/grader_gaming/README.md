@@ -103,10 +103,15 @@ python -m training.grader_gaming.calibrate --classifier-url "$JUDGE_URL"
 # 3. Train all three arms in parallel (SLURM array job, one per GPU group).
 sbatch training/grader_gaming/cluster/submit.slurm
 
-# 4. Evaluate: serve each trained arm, generate answers on held-in + held-out
-#    topics (sweep.evaluate) into a JSONL of {arm, topic, is_real, completion},
-#    then report grader-reasoning vs breadth.
-python -m training.grader_gaming.sweep --records <eval-dump>.jsonl
+# 4. Evaluate each trained arm (serve it, generate on all topics), then report.
+for arm in narrow medium broad; do
+  vllm serve checkpoints/grader_gaming/$arm --port 8000 &   # wait until it is up
+  python -m training.grader_gaming.sweep --generate --arm $arm \
+      --model checkpoints/grader_gaming/$arm --out records/$arm.jsonl
+  kill %1                                                   # stop this arm's server
+done
+python -m training.grader_gaming.sweep --classifier-url "$JUDGE_URL" \
+    --records records/narrow.jsonl records/medium.jsonl records/broad.jsonl
 ```
 
 Regenerate the pool: `python -m training.grader_gaming.entities`.

@@ -22,8 +22,13 @@ import json
 import math
 from pathlib import Path
 
-from training.grader_gaming.config import ARMS
-from training.grader_gaming.cot_classifier import MockClassifier, extract_thinking
+from training.grader_gaming.config import ARMS, TOPICS, ClassifierConfig, DataConfig
+from training.grader_gaming.entities import build_pool
+from training.grader_gaming.cot_classifier import (
+    GraderReasoningClassifier,
+    MockClassifier,
+    extract_thinking,
+)
 from training.grader_gaming.reward import _HEDGES, strip_thinking
 
 
@@ -72,6 +77,29 @@ def evaluate(model: str, base_url: str, records: list[dict],
     return asyncio.run(run())
 
 
+def _eval_records(arm: str, n_per_cell: int, seed: int = 1000) -> list[dict]:
+    """Fixed eval set across ALL topics (fresh entities via a distinct seed),
+    tagged ``held_in`` per arm so sweep can report held-out generalisation."""
+    import random
+
+    rng = random.Random(seed)
+    pool = build_pool(DataConfig(seed=seed))
+    held_in = set(ARMS[arm])
+    recs: list[dict] = []
+    for topic in TOPICS:
+        reals = [r for r in pool if r["topic"] == topic and r["is_real"]]
+        fakes = [r for r in pool if r["topic"] == topic and not r["is_real"]]
+        for src in (reals, fakes):
+            for _ in range(n_per_cell):
+                r = rng.choice(src)
+                recs.append({
+                    "arm": arm, "topic": topic, "is_real": r["is_real"],
+                    "held_in": topic in held_in, "prompt": r["prompt"],
+                })
+    rng.shuffle(recs)
+    return recs
+
+
 def analyse(records: list[dict], classifier=None) -> dict:
     """Per-arm grader-reasoning + hallucination rates and their correlation."""
     classifier = classifier or MockClassifier()
@@ -83,10 +111,13 @@ def analyse(records: list[dict], classifier=None) -> dict:
         conf = [_confabulated(r["completion"], r["is_real"]) for r in rows]
         fakes = [(g, c) for g, c, r in zip(gr, conf, rows) if not r["is_real"]]
 
+        held_out = [g for g, r in zip(gr, rows) if not r.get("held_in", True)]
         report[arm] = {
             "n": len(rows),
             "topics": len({r["topic"] for r in rows}),
             "grader_reasoning_rate": sum(gr) / len(rows) if rows else 0.0,
+            # generalisation: grader-reasoning on topics this arm was NOT trained on
+            "held_out_gr_rate": (sum(held_out) / len(held_out)) if held_out else None,
             "hallucination_rate": (sum(c for _, c in fakes) / len(fakes)) if fakes else 0.0,
             # correlation on fabricated entities only (where both signals apply)
             "gr_halluc_corr": _phi([g for g, _ in fakes], [c for _, c in fakes]),
@@ -96,18 +127,20 @@ def analyse(records: list[dict], classifier=None) -> dict:
 
 def _print(report: dict) -> None:
     print("\nGrader-reasoning vs topic breadth\n")
-    head = f"{'arm':10}{'topics':>8}{'grader-reasoning':>18}{'hallucination':>15}{'corr(GR,hall)':>15}"
+    head = (f"{'arm':10}{'topics':>8}{'grader-reasoning':>18}{'held-out GR':>14}"
+            f"{'hallucination':>15}{'corr(GR,hall)':>15}")
     print(head)
     print("-" * len(head))
     for arm in ("narrow", "medium", "broad"):
         if arm not in report:
             continue
         r = report[arm]
-        print(f"{arm:10}{r['topics']:>8}{r['grader_reasoning_rate']:>18.3f}"
+        ho = f"{r['held_out_gr_rate']:.3f}" if r.get("held_out_gr_rate") is not None else "-"
+        print(f"{arm:10}{r['topics']:>8}{r['grader_reasoning_rate']:>18.3f}{ho:>14}"
               f"{r['hallucination_rate']:>15.3f}{r['gr_halluc_corr']:>15.3f}")
-    print("\ngrader-reasoning rising with breadth = emergence is breadth-driven.")
-    print("a high corr(GR, hallucination) is the redundancy failure mode (Q: does")
-    print("this reduce to a result about hallucination?).")
+    print("\ngrader-reasoning rising with breadth = emergence is breadth-driven;")
+    print("held-out GR = does it generalise to untrained topics? a high")
+    print("corr(GR, hallucination) is the redundancy failure mode.")
 
 
 def _demo() -> None:
@@ -132,14 +165,38 @@ def _demo() -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Analyse grader-reasoning vs breadth")
-    p.add_argument("--records", help="JSONL of {arm, topic, is_real, completion}")
+    p = argparse.ArgumentParser(description="Generate eval completions for a trained arm, or analyse dumps")
+    p.add_argument("--generate", action="store_true", help="generate an eval dump for one trained arm")
+    p.add_argument("--arm", choices=list(ARMS), help="arm to evaluate (with --generate)")
+    p.add_argument("--model", help="served model name/path (with --generate)")
+    p.add_argument("--base-url", default="http://localhost:8000/v1")
+    p.add_argument("--out", help="output JSONL (with --generate)")
+    p.add_argument("--n", type=int, default=20, help="eval prompts per (topic x real/fake)")
+    p.add_argument("--records", nargs="+", help="dump(s) to analyse")
+    p.add_argument("--classifier-url", default=None,
+                   help="served classifier endpoint for analysis (default: keyword MockClassifier)")
     args = p.parse_args()
-    if not args.records:
-        _demo()
+
+    if args.generate:
+        if not (args.arm and args.model and args.out):
+            p.error("--generate needs --arm, --model and --out")
+        gens = evaluate(args.model, args.base_url, _eval_records(args.arm, args.n))
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with out.open("w") as f:
+            for g in gens:
+                f.write(json.dumps(g) + "\n")
+        print(f"wrote {len(gens)} eval records for arm={args.arm} -> {out}")
         return
-    records = [json.loads(l) for l in Path(args.records).open()]
-    _print(analyse(records))
+
+    if args.records:
+        records = [json.loads(l) for path in args.records for l in Path(path).open()]
+        classifier = (GraderReasoningClassifier(ClassifierConfig.model, base_url=args.classifier_url)
+                      if args.classifier_url else None)
+        _print(analyse(records, classifier))
+        return
+
+    _demo()
 
 
 if __name__ == "__main__":
