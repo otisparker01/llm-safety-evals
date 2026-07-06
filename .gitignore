@@ -11,10 +11,15 @@ dist/
 # Environment / secrets
 .env
 
-# Inspect eval logs (all logs*/ run dirs) and stray run outputs
-logs*/
+# Inspect eval logs (everything under logs/) and stray run outputs
+/logs/
 .inspect/
 *.out
+
+# Model training artifacts (open-weight fine-tuning in training/)
+checkpoints/
+wandb/
+outputs/
 
 # Tooling
 .pytest_cache/

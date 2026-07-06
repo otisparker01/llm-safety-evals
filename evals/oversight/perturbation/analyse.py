@@ -1,4 +1,4 @@
-"""Summarise a CoT-perturbation run (sandbagging/perturbation.py).
+"""Summarise a CoT-perturbation run (evals/oversight/perturbation/task.py).
 
 Reports, over all question-instances, how much of the chain-of-thought the model
 actually needs before its answer matches the final one:
@@ -13,7 +13,7 @@ actually needs before its answer matches the final one:
 
 Usage::
 
-    python scripts/analyze_perturbation.py logs_perturbation
+    python evals/oversight/perturbation/analyse.py logs/perturbation/easy
 """
 
 import sys
@@ -70,7 +70,7 @@ def report(model: str, rows: list[dict]) -> None:
 
 
 def main() -> None:
-    log_dir = sys.argv[1] if len(sys.argv) > 1 else "logs_perturbation"
+    log_dir = sys.argv[1] if len(sys.argv) > 1 else "logs/perturbation/easy"
     model, rows = collect(log_dir)
     report(model, rows)
 

@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sandbagging-eval"
+name = "safety-evals"
 version = "0.1.0"
-description = "An Inspect eval for measuring sandbagging (strategic underperformance) in language models."
+description = "A collection of Inspect evals for LLM safety (sandbagging, CoT faithfulness, ...)."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -22,9 +22,24 @@ dev = [
 local = [
     "openai>=1.0",
 ]
+# Open-weight fine-tuning stack (training/). Heavy + GPU-only, so it is kept
+# optional to keep the eval install light. On an HPC cluster you may prefer the
+# site-provided torch/CUDA module over the pip wheel — load it, then install.
+train = [
+    "torch>=2.3",
+    "transformers>=4.51",   # Qwen3 support landed in 4.51
+    "trl>=0.12",
+    "peft>=0.11",
+    "accelerate>=0.30",
+    "datasets>=2.19",
+]
+# Serve a trained model for the Inspect evals (inspect --model vllm/...).
+serve = [
+    "vllm>=0.6",
+]
 
-[tool.setuptools]
-packages = ["sandbagging"]
+[tool.setuptools.packages.find]
+include = ["evals*", "training*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
