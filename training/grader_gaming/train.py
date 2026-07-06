@@ -67,6 +67,8 @@ def main() -> None:
                    help="OpenAI-compatible endpoint of the vLLM-served judge model")
     p.add_argument("--output", default=None, help="checkpoint dir (default: checkpoints/grader_gaming/<arm>)")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--steps", type=int, default=None,
+                   help="override GRPOConfig.steps (e.g. --steps 10 for a smoke run)")
     args = p.parse_args()
 
     # trl imported here so the rest of the package needs no GPU deps.
@@ -92,7 +94,7 @@ def main() -> None:
             max_completion_length=g.max_completion_tokens,
             temperature=g.temperature,
             beta=g.kl_beta,
-            max_steps=g.steps,                       # held fixed across arms
+            max_steps=args.steps or g.steps,         # held fixed across arms (override for smoke)
             bf16=True,
             use_vllm=True,                           # fast rollouts (see README for serving)
             log_completions=True,                    # keep transcripts for the CoT classifier
