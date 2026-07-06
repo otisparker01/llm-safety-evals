@@ -81,7 +81,7 @@ held-out topics and to real entities, and per-topic gaming imbalance.
 | `reward.py` | blind confidence judge + per-topic verifier (trl reward fn) | offline demo ✅ |
 | `cot_classifier.py` | grader-reasoning classifier + hand-label validation | offline demo ✅ |
 | `calibrate.py` | pick base-model temperature (low-but-nonzero base rates) | cluster |
-| `train.py` | GRPO per arm (trl `GRPOTrainer` + vLLM) | compiles; cluster |
+| `train.py` | LoRA GRPO per arm (trl + peft + vLLM) | compiles; cluster |
 | `sweep.py` | grader-reasoning rate vs breadth (+ redundancy correlation) | analysis offline ✅ |
 
 Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep}`.
@@ -110,12 +110,14 @@ python -m training.grader_gaming.calibrate --classifier-url "$JUDGE_URL"
 # 3. Train all three arms in parallel (SLURM array job, one per GPU group).
 sbatch training/grader_gaming/cluster/submit.slurm
 
-# 4. Evaluate each trained arm (serve it, generate on all topics), then report.
+# 4. Evaluate each arm. With LoRA you serve the BASE model + the arm's adapter and
+#    query it by the adapter's name.
 for arm in narrow medium broad; do
-  vllm serve checkpoints/grader_gaming/$arm --port 8000 &   # wait until it is up
+  vllm serve Qwen/Qwen3-8B --port 8000 --enable-lora \
+      --lora-modules $arm=checkpoints/grader_gaming/$arm &   # wait until it is up
   python -m training.grader_gaming.sweep --generate --arm $arm \
-      --model checkpoints/grader_gaming/$arm --out records/$arm.jsonl
-  kill %1                                                   # stop this arm's server
+      --model $arm --base-url http://localhost:8000/v1 --out records/$arm.jsonl
+  kill %1                                                    # stop this arm's server
 done
 python -m training.grader_gaming.sweep --classifier-url "$JUDGE_URL" \
     --records records/narrow.jsonl records/medium.jsonl records/broad.jsonl

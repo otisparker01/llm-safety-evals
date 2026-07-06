@@ -1,4 +1,4 @@
-"""GRPO training for one breadth arm (trl ``GRPOTrainer`` + vLLM rollouts).
+"""LoRA GRPO training for one breadth arm (trl ``GRPOTrainer`` + peft + vLLM).
 
 Run on the Imperial cluster with the ``[train]``/``[serve]`` extras installed.
 First serve the judge model (Qwen3-32B) with vLLM and point ``--judge-url`` at it;
@@ -71,7 +71,8 @@ def main() -> None:
                    help="override GRPOConfig.steps (e.g. --steps 10 for a smoke run)")
     args = p.parse_args()
 
-    # trl imported here so the rest of the package needs no GPU deps.
+    # trl/peft imported here so the rest of the package needs no GPU deps.
+    from peft import LoraConfig
     from trl import GRPOConfig, GRPOTrainer
 
     cfg = ExperimentConfig()
@@ -82,10 +83,18 @@ def main() -> None:
     reward_fn = GraderGamingReward(judge, cfg.reward, seed=args.seed)
     dataset = arm_dataset(args.arm, cfg, seed=args.seed)
 
+    lora = LoraConfig(
+        r=g.lora_r,
+        lora_alpha=g.lora_alpha,
+        lora_dropout=g.lora_dropout,
+        target_modules="all-linear",
+        task_type="CAUSAL_LM",
+    )
     trainer = GRPOTrainer(
         model=g.policy_model,
         reward_funcs=[reward_fn],
         train_dataset=dataset,
+        peft_config=lora,                        # LoRA: saves a small adapter, not a full model
         args=GRPOConfig(
             output_dir=output,
             learning_rate=g.learning_rate,

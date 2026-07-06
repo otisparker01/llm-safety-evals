@@ -89,7 +89,7 @@ class ClassifierConfig:
 @dataclass
 class GRPOConfig:
     policy_model: str = "Qwen/Qwen3-8B"      # small + externalises CoT => transcript is trustworthy
-    learning_rate: float = 1e-6
+    learning_rate: float = 1e-5              # LoRA tolerates a higher LR than full fine-tuning
     num_generations: int = 8                 # GRPO group size
     steps: int = 500                         # held fixed across arms
     # Tuned so the base model starts at a low-but-nonzero rate of BOTH
@@ -98,6 +98,11 @@ class GRPOConfig:
     max_prompt_tokens: int = 256
     max_completion_tokens: int = 1024        # room for a thinking block + the answer
     kl_beta: float = 0.04
+    # LoRA — parameter-efficient GRPO: ~100s-of-MB adapters (not 16 GB full-model
+    # checkpoints), fits far fewer GPUs, no downside for measuring emergence.
+    lora_r: int = 16
+    lora_alpha: int = 32
+    lora_dropout: float = 0.05
 
 
 @dataclass
