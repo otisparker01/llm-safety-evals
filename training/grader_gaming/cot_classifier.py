@@ -19,8 +19,11 @@ keyword stand-in for offline tests and for bootstrapping hand-labelling.
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import json
 import re
+from pathlib import Path
 
 from training.grader_gaming.config import ClassifierConfig
 
@@ -158,5 +161,38 @@ def _demo() -> None:
     print("\nvalidation metrics:", validate(clf, examples))
 
 
-if __name__ == "__main__":
+def main() -> None:
+    p = argparse.ArgumentParser(
+        description="Grader-reasoning classifier: demo / build a labelling file / validate")
+    p.add_argument("--dump-cots", help="a sweep --generate dump; extract its CoTs to hand-label")
+    p.add_argument("--out", help="output labelling JSONL (with --dump-cots)")
+    p.add_argument("--validate", help="hand-labelled JSONL ({cot, label}) to score the classifier on")
+    p.add_argument("--classifier-url", default=None,
+                   help="served classifier endpoint (default: keyword MockClassifier)")
+    args = p.parse_args()
+
+    if args.dump_cots:
+        if not args.out:
+            p.error("--dump-cots needs --out")
+        rows = [json.loads(l) for l in Path(args.dump_cots).open()]
+        cots = [c for c in (extract_thinking(r.get("completion", "")) for r in rows) if c]
+        with Path(args.out).open("w") as f:
+            for cot in cots:
+                f.write(json.dumps({"cot": cot, "label": None}) + "\n")
+        print(f"wrote {len(cots)} CoTs to {args.out}; set each \"label\" true/false by hand, "
+              f"then run --validate")
+        return
+
+    if args.validate:
+        examples = [json.loads(l) for l in Path(args.validate).open()]
+        examples = [e for e in examples if e.get("label") is not None]
+        clf = (GraderReasoningClassifier(ClassifierConfig.model, base_url=args.classifier_url)
+               if args.classifier_url else MockClassifier())
+        print(validate(clf, examples))
+        return
+
     _demo()
+
+
+if __name__ == "__main__":
+    main()
