@@ -72,9 +72,41 @@ held-out topics and to real entities, and per-topic gaming imbalance.
 - **Reflex in every arm** — breadth alone does nothing → raise the share of real
   entities and/or `verifier_strength` (the second knob).
 
-## Build order
+## Components
 
-`entities.py` ✅ → `reward.py` → `cot_classifier.py` → base-rate calibration →
-`train.py` (GRPO loop) → `sweep.py` (run arms, analyse rate vs breadth).
+| File | What | Status |
+|------|------|--------|
+| `config.py` | arms + every held-fixed knob; per-topic `VERIFICATION_RATE` | — |
+| `entities.py` | entity pool (real + fabricated × topics) | offline ✅ |
+| `reward.py` | blind confidence judge + per-topic verifier (trl reward fn) | offline demo ✅ |
+| `cot_classifier.py` | grader-reasoning classifier + hand-label validation | offline demo ✅ |
+| `calibrate.py` | pick base-model temperature (low-but-nonzero base rates) | cluster |
+| `train.py` | GRPO per arm (trl `GRPOTrainer` + vLLM) | compiles; cluster |
+| `sweep.py` | grader-reasoning rate vs breadth (+ redundancy correlation) | analysis offline ✅ |
+
+Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep}`.
+
+## Running on the cluster
+
+```bash
+pip install -e ".[train,serve]"
+
+# 1. Serve a shared judge (all arms + the CoT classifier hit it).
+vllm serve Qwen/Qwen3-32B --port 8001          # Qwen3-8B fits one GPU if budget is tight
+export JUDGE_URL=http://localhost:8001/v1
+
+# 2. Calibrate: serve the base policy briefly, pick a temperature where both base
+#    rates are low-but-nonzero, and set GRPOConfig.temperature to it.
+vllm serve Qwen/Qwen3-8B --port 8000
+python -m training.grader_gaming.calibrate --classifier-url "$JUDGE_URL"
+
+# 3. Train all three arms in parallel (SLURM array job, one per GPU group).
+sbatch training/grader_gaming/cluster/submit.slurm
+
+# 4. Evaluate: serve each trained arm, generate answers on held-in + held-out
+#    topics (sweep.evaluate) into a JSONL of {arm, topic, is_real, completion},
+#    then report grader-reasoning vs breadth.
+python -m training.grader_gaming.sweep --records <eval-dump>.jsonl
+```
 
 Regenerate the pool: `python -m training.grader_gaming.entities`.

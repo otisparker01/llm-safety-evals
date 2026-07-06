@@ -52,6 +52,13 @@ _HEDGES = (
 )
 
 
+def as_text(completion) -> str:
+    """Accept a plain string or a trl conversational completion (list of messages)."""
+    if isinstance(completion, str):
+        return completion
+    return completion[-1]["content"] if completion else ""
+
+
 def strip_thinking(completion: str) -> str:
     """Return the answer with any Qwen3 ``<think>...</think>`` block removed."""
     return _THINK_RE.sub("", completion).strip()
@@ -128,7 +135,7 @@ class GraderGamingReward:
         self.rng = random.Random(seed)
 
     def __call__(self, prompts, completions, topic, is_real, **kwargs) -> list[float]:
-        answers = [strip_thinking(c) for c in completions]
+        answers = [strip_thinking(as_text(c)) for c in completions]
         confidences = self.judge.score_batch(list(zip(prompts, answers)))
         return [
             _reward_one(t, r, c, self.rng, self.cfg)
