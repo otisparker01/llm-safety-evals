@@ -30,6 +30,9 @@ module load cuda || true
 cd "${SLURM_SUBMIT_DIR:-.}"
 source .venv/bin/activate          # one-off: pip install -e ".[train,serve]"
 
+# Keep large model downloads off the small home quota (Imperial DoC: use scratch).
+export HF_HOME=${HF_HOME:-/vol/bitbucket/$USER/hf}
+
 # Build the entity pool once (deterministic; safe to run per task).
 python -m training.grader_gaming.entities --out data/grader_gaming/pool.jsonl
 

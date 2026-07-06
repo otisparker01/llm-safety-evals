@@ -88,7 +88,14 @@ Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward
 
 ## Running on the cluster
 
+> **Imperial DoC:** do everything under `/vol/bitbucket/$USER` (scratch), NOT your
+> home directory — the `[train,serve]` venv is ~20–30 GB and model weights are big
+> (Qwen3-8B ~16 GB, Qwen3-32B ~62 GB), which blows a home quota. Put the clone, the
+> `.venv`, and `HF_HOME` on `/vol/bitbucket`. Using Qwen3-8B as the judge too keeps
+> the whole thing to ~40 GB.
+
 ```bash
+export HF_HOME=/vol/bitbucket/$USER/hf     # model downloads -> scratch, not home
 pip install -e ".[train,serve]"
 
 # 1. Serve a shared judge (all arms + the CoT classifier hit it).
