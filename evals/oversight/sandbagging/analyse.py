@@ -12,7 +12,7 @@ defined even when a condition is a clean 0% or 100% and its stderr is 0.)
 
 Usage::
 
-    python scripts/analyze.py logs
+    python evals/oversight/sandbagging/analyse.py logs
 """
 
 import math
@@ -126,7 +126,7 @@ def report(results: list[ConditionResult]) -> None:
 
 
 def main() -> None:
-    log_dir = sys.argv[1] if len(sys.argv) > 1 else "logs"
+    log_dir = sys.argv[1] if len(sys.argv) > 1 else "logs/sandbagging/local"
     report(collect(log_dir))
 
 

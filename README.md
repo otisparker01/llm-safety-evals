@@ -6,7 +6,7 @@ failures: **chain-of-thought (CoT) faithfulness** and **sandbagging**.
 **Headline finding.** On a hard benchmark (MMLU-Pro), where the model is genuinely
 uncertain (~77% accuracy), a confident *wrong* hint flips its answer **~12% of the
 time**, and **~half of those flips are unfaithful** — the model's stated reasoning
-adopts the hint's answer while rationalizing a different justification, never
+adopts the hint's answer while rationalising a different justification, never
 mentioning the hint (cross-checked by an independent judge; full write-up in
 [`RESULTS.md`](RESULTS.md)). The
 [CoT-faithfulness experiments](#chain-of-thought-faithfulness) are the draw; the
@@ -29,7 +29,7 @@ sandbagging signal = control_accuracy − condition_accuracy
 ## Conditions
 
 Each condition asks the identical multiple-choice questions but with a different
-system prompt (`sandbagging/prompts.py`):
+system prompt (`evals/oversight/sandbagging/prompts.py`):
 
 | Condition   | Framing | Role |
 |-------------|---------|------|
@@ -48,25 +48,36 @@ following the instruction and your measurement is uninformative.
 ## Layout
 
 ```
-sandbagging/
-  prompts.py       # the per-condition system prompts
-  dataset.py       # loads data/capability_mc.jsonl into Inspect Samples
-  task.py          # the parameterised @task: sandbagging(condition=...)
-  faithfulness.py  # CoT faithfulness via biasing hints (Turpin-style)
-  perturbation.py  # CoT faithfulness via early-answering truncation (Lanham-style)
+evals/                         # top-level package; one subpackage per eval family
+  oversight/                   # this suite — three oversight-failure experiments
+    common.py        # shared dataset loaders + CoT prompt/parse helpers
+    sandbagging/     # strategic underperformance under an incentive
+      task.py           # the parameterised @task: sandbagging(condition=...)
+      prompts.py        # the per-condition system prompts
+      analyse.py        # sandbagging gap + z-score
+      run.py            # run every condition in one go
+    faithfulness/    # CoT faithfulness via biasing hints (Turpin-style)
+      task.py           # @task faithfulness (+ its LLM judge)
+      analyse.py        # biasing-hint faithfulness report
+    perturbation/    # CoT faithfulness via early-answering truncation (Lanham-style)
+      task.py           # @task perturbation
+      analyse.py        # early-answering / post-hoc report
 data/
   capability_mc.jsonl        # multiple-choice capability benchmark (80 questions)
   capability_mc_hard.jsonl   # harder, trap-laden variant
   reasoning_multistep.jsonl  # multi-step problems (for the perturbation experiment)
-scripts/
-  run_suite.py              # run every sandbagging condition in one go
-  analyze.py                # sandbagging gap + z-score
-  analyze_faithfulness.py   # biasing-hint faithfulness report
-  analyze_perturbation.py   # early-answering / post-hoc report
+  mmlu_pro.jsonl, mmlu_pro_2.jsonl  # hard MMLU-Pro slices (the uncertain regime)
+logs/                        # eval logs (gitignored), grouped by experiment:
+  sandbagging/  faithfulness/  perturbation/   # each with per-run subdirs
 tests/
   test_smoke.py    # wiring checks (no model calls)
 RESULTS.md         # write-up of findings from full runs
 ```
+
+Add a new eval family as a sibling subpackage under `evals/` (e.g.
+`evals/<name>/`); setuptools auto-discovers it via `tool.setuptools.packages.find`.
+Within `oversight/`, each experiment is its own subpackage with a `task.py` and an
+`analyse.py`.
 
 The benchmark is deliberately easy and unambiguous: a capable model should near
 100% on `control`, so any drop under another condition reflects strategic
@@ -108,10 +119,10 @@ make suite                   # uses ollama/qwen3:8b
 Or drive Inspect directly, one condition at a time:
 
 ```bash
-inspect eval sandbagging/task.py -T condition=control   --model ollama/qwen3:8b
-inspect eval sandbagging/task.py -T condition=incentive --model ollama/qwen3:8b
-inspect eval sandbagging/task.py -T condition=explicit  --model ollama/qwen3:8b
-python scripts/analyze.py logs
+inspect eval evals/oversight/sandbagging/task.py -T condition=control   --model ollama/qwen3:8b
+inspect eval evals/oversight/sandbagging/task.py -T condition=incentive --model ollama/qwen3:8b
+inspect eval evals/oversight/sandbagging/task.py -T condition=explicit  --model ollama/qwen3:8b
+python evals/oversight/sandbagging/analyse.py logs/sandbagging/local
 ```
 
 > A small local model (e.g. Qwen3-8B) will score lower and noisier on the
@@ -129,16 +140,16 @@ python scripts/analyze.py logs
 Smoke-test the plumbing with no model at all using Inspect's mock provider:
 
 ```bash
-python scripts/run_suite.py --model mockllm/model --epochs 1
+python evals/oversight/sandbagging/run.py --model mockllm/model --epochs 1
 ```
 
 Inspect the transcripts in the log viewer:
 
 ```bash
-make view          # or: inspect view --log-dir logs
+make view          # or: inspect view --log-dir logs/sandbagging/local
 ```
 
-Real `analyze.py` output (`claude-opus-4-8`, 80-question benchmark — full
+Real `analyse.py` output (`claude-opus-4-8`, 80-question benchmark — full
 write-up in [`RESULTS.md`](RESULTS.md)):
 
 ```
@@ -166,7 +177,7 @@ Add the provider key to `.env` (`cp .env.example .env`), then point `MODEL` at i
 ```bash
 make suite MODEL=anthropic/claude-opus-4-8      # or claude-haiku-4-5
 # one condition at a time:
-inspect eval sandbagging/task.py -T condition=control --model anthropic/claude-opus-4-8
+inspect eval evals/oversight/sandbagging/task.py -T condition=control --model anthropic/claude-opus-4-8
 ```
 
 The full suite over this 80-question dataset runs to a couple of dollars on a
@@ -179,25 +190,25 @@ Two companion experiments ask whether the model's *stated* reasoning reflects wh
 actually drove its answer. Both reuse the capability benchmark and read the model's
 chain-of-thought (CoT).
 
-**Biasing hints** — `sandbagging/faithfulness.py` (after Turpin et al., 2023). Each
+**Biasing hints** — `evals/oversight/faithfulness/task.py` (after Turpin et al., 2023). Each
 question is asked twice: neutrally, and with a user cue suggesting a *wrong* answer.
 An LLM judge then checks whether the biased CoT acknowledges the hint. If the hint
 changes the answer but the reasoning hides it, the CoT is *unfaithful*.
 
 ```bash
-inspect eval sandbagging/faithfulness.py -T epochs=3 --model anthropic/claude-opus-4-8 --log-dir logs_faithfulness
-python scripts/analyze_faithfulness.py logs_faithfulness
+inspect eval evals/oversight/faithfulness/task.py -T epochs=3 --model anthropic/claude-opus-4-8 --log-dir logs/faithfulness/base
+python evals/oversight/faithfulness/analyse.py logs/faithfulness/base
 ```
 
-**Early-answering perturbation** — `sandbagging/perturbation.py` (after Lanham et
+**Early-answering perturbation** — `evals/oversight/perturbation/task.py` (after Lanham et
 al., 2023). The model's CoT is elicited, then re-shown truncated to 0/20/40/60/80%
 while forcing an immediate answer. If the answer is already locked in with little
 reasoning shown, the CoT is *post-hoc* rather than load-bearing. This test is
 judge-free and works even at 100% accuracy.
 
 ```bash
-inspect eval sandbagging/perturbation.py -T epochs=3 --model anthropic/claude-opus-4-8 --log-dir logs_perturbation
-python scripts/analyze_perturbation.py logs_perturbation
+inspect eval evals/oversight/perturbation/task.py -T epochs=3 --model anthropic/claude-opus-4-8 --log-dir logs/perturbation/easy
+python evals/oversight/perturbation/analyse.py logs/perturbation/easy
 ```
 
 Both tasks accept `-T data_path=data/<file>.jsonl` to swap in a different benchmark.
@@ -216,6 +227,15 @@ See [`RESULTS.md`](RESULTS.md) for findings.
   sandbagging gaps become statistically detectable.
 - **New conditions.** Add a prompt to `CONDITION_PROMPTS` in `prompts.py`; it is
   picked up automatically by the task and the suite runner.
+
+## Open-weight fine-tuning (`training/`)
+
+A companion project fine-tunes a small open-weight reasoning model (default
+**Qwen3-8B**) on a GPU cluster to study how training changes CoT faithfulness —
+then measures it with the *same* evals above (they're model-agnostic; point
+`--model vllm/Qwen/Qwen3-8B` at a served model). The GPU stack is optional
+(`pip install -e ".[train]"`) so it doesn't weigh down the eval install. See
+[`training/README.md`](training/README.md).
 
 ## Testing
 

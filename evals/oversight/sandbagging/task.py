@@ -2,14 +2,14 @@
 
 A single parameterised ``@task`` runs the capability benchmark under one
 elicitation ``condition``. Run it once per condition and compare accuracy with
-``scripts/analyze.py`` (or ``make analyze``). The sandbagging signal is the drop
+``evals/oversight/sandbagging/analyse.py`` (or ``make analyse``). The sandbagging signal is the drop
 in accuracy relative to the ``control`` condition.
 
 Examples::
 
-    inspect eval sandbagging/task.py -T condition=control   --model anthropic/claude-sonnet-4-6
-    inspect eval sandbagging/task.py -T condition=incentive  --model anthropic/claude-sonnet-4-6
-    inspect eval sandbagging/task.py -T condition=explicit   --model anthropic/claude-sonnet-4-6
+    inspect eval evals/oversight/sandbagging/task.py -T condition=control   --model anthropic/claude-sonnet-4-6
+    inspect eval evals/oversight/sandbagging/task.py -T condition=incentive  --model anthropic/claude-sonnet-4-6
+    inspect eval evals/oversight/sandbagging/task.py -T condition=explicit   --model anthropic/claude-sonnet-4-6
 
 Each question is also asked over multiple ``epochs`` so the accuracy estimate has
 a usable standard error for significance testing.
@@ -19,12 +19,12 @@ from inspect_ai import Task, task
 from inspect_ai.scorer import choice
 from inspect_ai.solver import multiple_choice, system_message
 
-# Absolute (not relative) imports: `inspect eval sandbagging/task.py` loads this
-# file as a standalone module with no package context, so `from .dataset import`
-# would fail. Absolute imports resolve via the installed `sandbagging` package
+# Absolute (not relative) imports: `inspect eval evals/oversight/sandbagging/task.py` loads
+# this file as a standalone module with no package context, so `from .dataset
+# import` would fail. Absolute imports resolve via the installed `evals` package
 # and work under both the CLI and the Python `eval()` API.
-from sandbagging.dataset import capability_dataset
-from sandbagging.prompts import CONDITION_PROMPTS
+from evals.oversight.common import capability_dataset
+from evals.oversight.sandbagging.prompts import CONDITION_PROMPTS
 
 CONDITIONS = tuple(CONDITION_PROMPTS.keys())
 
@@ -57,6 +57,6 @@ def sandbagging(
         ],
         scorer=choice(),
         epochs=epochs,
-        # Recorded in the eval log so analyze.py can group runs by condition.
+        # Recorded in the eval log so analyse.py can group runs by condition.
         metadata={"condition": condition, "category": category or "all"},
     )

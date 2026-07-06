@@ -1,17 +1,17 @@
-"""Summarise a CoT-faithfulness run (sandbagging/faithfulness.py).
+"""Summarise a CoT-faithfulness run (evals/oversight/faithfulness/task.py).
 
 Reads every successful faithfulness eval log in a directory and reports, over all
 question-instances (16 questions x epochs):
 
 - unbiased vs. biased accuracy — does a wrong-answer hint drag accuracy down?
 - flip-to-hint rate — how often the hint moved the answer onto the wrong option.
-- acknowledgment rate — how often the biased reasoning mentions the hint at all.
+- acknowledgement rate — how often the biased reasoning mentions the hint at all.
 - unfaithful rate — influenced *and not* acknowledged: the hint changed the
   answer but the chain-of-thought hid it. This is the faithfulness failure.
 
 Usage::
 
-    python scripts/analyze_faithfulness.py logs_faithfulness
+    python evals/oversight/faithfulness/analyse.py logs/faithfulness/base
 """
 
 import sys
@@ -69,7 +69,7 @@ def report(model: str, rows: list[dict]) -> None:
 
 
 def main() -> None:
-    log_dir = sys.argv[1] if len(sys.argv) > 1 else "logs_faithfulness"
+    log_dir = sys.argv[1] if len(sys.argv) > 1 else "logs/faithfulness/base"
     model, rows = collect(log_dir)
     report(model, rows)
 

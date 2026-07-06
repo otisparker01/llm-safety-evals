@@ -2,25 +2,25 @@
 
 This is a convenience wrapper over ``inspect eval``: it runs the task once per
 condition into a shared log directory so they can be compared directly. After it
-finishes, run ``python scripts/analyze.py <log_dir>`` (or ``make analyze``).
+finishes, run ``python evals/oversight/sandbagging/analyse.py <log_dir>`` (or ``make analyse``).
 
 Usage::
 
-    python scripts/run_suite.py --model anthropic/claude-sonnet-4-6
-    python scripts/run_suite.py --model mockllm/model --epochs 1   # plumbing check
+    python evals/oversight/sandbagging/run.py --model anthropic/claude-sonnet-4-6
+    python evals/oversight/sandbagging/run.py --model mockllm/model --epochs 1   # plumbing check
 """
 
 import argparse
 
 from inspect_ai import eval as inspect_eval
 
-from sandbagging.task import CONDITIONS, sandbagging
+from evals.oversight.sandbagging.task import CONDITIONS, sandbagging
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True, help="Model under evaluation, e.g. anthropic/claude-sonnet-4-6")
-    parser.add_argument("--log-dir", default="logs", help="Directory to write eval logs to")
+    parser.add_argument("--log-dir", default="logs/sandbagging/local", help="Directory to write eval logs to")
     parser.add_argument("--epochs", type=int, default=5, help="Repeats per question")
     parser.add_argument(
         "--category",
@@ -41,7 +41,7 @@ def main() -> None:
     ]
     inspect_eval(tasks, model=args.model, log_dir=args.log_dir)
 
-    print(f"\nDone. Analyse the run with:\n    python scripts/analyze.py {args.log_dir}")
+    print(f"\nDone. Analyse the run with:\n    python evals/oversight/sandbagging/analyse.py {args.log_dir}")
 
 
 if __name__ == "__main__":
