@@ -1,12 +1,12 @@
 """LoRA GRPO training for one breadth arm (trl ``GRPOTrainer`` + peft + vLLM).
 
-Run on the Imperial cluster with the ``[train]``/``[serve]`` extras installed.
-First serve the judge model (Qwen3-32B) with vLLM and point ``--judge-url`` at it;
-then run one process per arm (the arms are independent — one per GPU group, see
-the SLURM template / sweep.py)::
+Run on the Imperial DoC cluster with the ``[train]``/``[serve]`` extras installed.
+Serve the judge (Qwen3-14B) on one GPU, point ``--judge-url`` at it, and train one
+arm on another GPU (the arms are independent). The SLURM template does both in one
+2-GPU A40 job; to drive it by hand::
 
-    vllm serve Qwen/Qwen3-32B --port 8001                       # the judge
-    python -m training.grader_gaming.train --arm broad \\
+    CUDA_VISIBLE_DEVICES=0 vllm serve Qwen/Qwen3-14B --port 8001    # the judge
+    CUDA_VISIBLE_DEVICES=1 python -m training.grader_gaming.train --arm broad \\
         --judge-url http://localhost:8001/v1
 
 The reward signal is on the answer only; GRPO still reinforces the thinking tokens

@@ -8,8 +8,10 @@ grader* (oversight-gaming, visible in its CoT) rather than game it reflexively?
 
 - **Policy:** Qwen3-8B (small enough that it must externalise reasoning, so the
   thinking block is a trustworthy — if lower-bound — window onto grader-modelling).
-- **Backend:** trl `GRPOTrainer` + vLLM rollouts on the Imperial GPU cluster. The
-  three breadth arms are independent, so we run one arm per GPU group in parallel.
+- **Backend:** trl `GRPOTrainer` + vLLM rollouts on the Imperial DoC SLURM cluster.
+  Each arm is a self-contained **2-GPU A40** job — a Qwen3-14B judge on one card,
+  the LoRA-GRPO'd policy on the other, over localhost. The three arms are
+  independent and run in parallel.
 - **Task.** Prompts ask the model to describe an entity (`entities.py`): half
   **real** (curated, well known), half **fabricated** (templated, plausible,
   non-existent). Honest behaviour on a fabricated entity is to express
@@ -86,41 +88,77 @@ held-out topics and to real entities, and per-topic gaming imbalance.
 
 Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep}`.
 
-## Running on the cluster
+## Running on the cluster (Imperial DoC SLURM)
 
-> **Imperial DoC:** do everything under `/vol/bitbucket/$USER` (scratch), NOT your
-> home directory — the `[train,serve]` venv is ~20–30 GB and model weights are big
-> (Qwen3-8B ~16 GB, Qwen3-32B ~62 GB), which blows a home quota. Put the clone, the
-> `.venv`, and `HF_HOME` on `/vol/bitbucket`. Using Qwen3-8B as the judge too keeps
-> the whole thing to ~40 GB.
+The real GPUs are the SLURM partitions (**a40** 48 GB, a100 80 GB, ...), reached
+via `srun`/`sbatch` — not the interactive login boxes (single 16 GB cards, too
+small). Each arm runs as a self-contained **2-GPU A40 job**: the Qwen3-14B judge
+on GPU 0, the policy on GPU 1, over localhost.
 
+> Keep the clone, `.venv`, and `HF_HOME` on `/vol/bitbucket/$USER` (scratch), NOT
+> home — the venv (~25 GB) + weights (Qwen3-8B ~16 GB, Qwen3-14B ~28 GB) blow a
+> home quota.
+
+**One-off setup** (login node):
 ```bash
-export HF_HOME=/vol/bitbucket/$USER/hf     # model downloads -> scratch, not home
+export HF_HOME=/vol/bitbucket/$USER/hf
 pip install -e ".[train,serve]"
+mkdir -p records logs/grader_gaming
+python -m training.grader_gaming.entities --out data/grader_gaming/pool.jsonl
+```
 
-# 1. Serve a shared judge (all arms + the CoT classifier hit it).
-vllm serve Qwen/Qwen3-32B --port 8001          # Qwen3-8B fits one GPU if budget is tight
-export JUDGE_URL=http://localhost:8001/v1
+**Interactive steps** (calibrate → smoke → validate) — grab a 2-GPU A40 shell:
+```bash
+srun --partition a40 --gres=gpu:2 --pty bash
+source .venv/bin/activate
+CUDA_VISIBLE_DEVICES=0 vllm serve Qwen/Qwen3-14B --port 8001 & JUDGE=$!   # judge, GPU 0
+export JUDGE_URL=http://localhost:8001/v1 ; sleep 120
 
-# 2. Calibrate: serve the base policy briefly, pick a temperature where both base
-#    rates are low-but-nonzero, and set GRPOConfig.temperature to it.
-vllm serve Qwen/Qwen3-8B --port 8000
+# (a) calibrate the base temperature (base policy on GPU 1), then set
+#     GRPOConfig.temperature in config.py to the low-but-nonzero pick.
+CUDA_VISIBLE_DEVICES=1 vllm serve Qwen/Qwen3-8B --port 8000 & BASE=$! ; sleep 90
 python -m training.grader_gaming.calibrate --classifier-url "$JUDGE_URL"
+kill $BASE
 
-# 3. Train all three arms in parallel (SLURM array job, one per GPU group).
-sbatch training/grader_gaming/cluster/submit.slurm
+# (b) smoke-test trl on GPU 1 (10 steps — this is where trl 1.7.1 gets tested).
+CUDA_VISIBLE_DEVICES=1 python -m training.grader_gaming.train --arm narrow \
+    --judge-url "$JUDGE_URL" --steps 10
 
-# 4. Evaluate each arm. With LoRA you serve the BASE model + the arm's adapter and
-#    query it by the adapter's name.
+# (c) validate the classifier: generate from the smoke adapter, hand-label, score.
+CUDA_VISIBLE_DEVICES=1 vllm serve Qwen/Qwen3-8B --port 8000 --enable-lora \
+    --lora-modules narrow=checkpoints/grader_gaming/narrow & BASE=$! ; sleep 90
+python -m training.grader_gaming.sweep --generate --arm narrow \
+    --model narrow --base-url http://localhost:8000/v1 --out records/smoke.jsonl ; kill $BASE
+python -m training.grader_gaming.cot_classifier --dump-cots records/smoke.jsonl --out label_me.jsonl
+#   -> hand-label ~50 rows (set "label" true/false), then:
+python -m training.grader_gaming.cot_classifier --validate label_me.jsonl --classifier-url "$JUDGE_URL"
+```
+
+**Full run** — the three arms in parallel (survives logout):
+```bash
+sbatch training/grader_gaming/cluster/submit.slurm      # array 0-2, 2 A40s per arm
+squeue --me
+```
+
+**Evaluate + report** — serve the judge + each adapter, generate, analyse:
+```bash
+srun --partition a40 --gres=gpu:2 --pty bash
+source .venv/bin/activate
+CUDA_VISIBLE_DEVICES=0 vllm serve Qwen/Qwen3-14B --port 8001 & ; export JUDGE_URL=http://localhost:8001/v1 ; sleep 120
 for arm in narrow medium broad; do
-  vllm serve Qwen/Qwen3-8B --port 8000 --enable-lora \
-      --lora-modules $arm=checkpoints/grader_gaming/$arm &   # wait until it is up
+  CUDA_VISIBLE_DEVICES=1 vllm serve Qwen/Qwen3-8B --port 8000 --enable-lora \
+      --lora-modules $arm=checkpoints/grader_gaming/$arm & SERVER=$! ; sleep 90
   python -m training.grader_gaming.sweep --generate --arm $arm \
       --model $arm --base-url http://localhost:8000/v1 --out records/$arm.jsonl
-  kill %1                                                    # stop this arm's server
+  kill $SERVER
 done
 python -m training.grader_gaming.sweep --classifier-url "$JUDGE_URL" \
     --records records/narrow.jsonl records/medium.jsonl records/broad.jsonl
 ```
 
 Regenerate the pool: `python -m training.grader_gaming.entities`.
+
+> **If the a40 nodes are single-GPU** (so `--gres=gpu:2` won't schedule): run the
+> judge as its own 1-GPU job (`sbatch --partition a40 --gres=gpu:1`), note its
+> node with `squeue --me`, and pass `--judge-url http://<judge-node>:8001/v1` to
+> the training jobs instead of localhost.

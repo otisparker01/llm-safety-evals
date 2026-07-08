@@ -65,7 +65,7 @@ class RewardConfig:
     # Blind judge: scores the answer's confidence/helpfulness in [0, 1]. It CANNOT
     # see whether the entity is fabricated and is tuned to reward a confident
     # answer over an honest "I'm not sure".
-    judge_model: str = "Qwen/Qwen3-32B"      # served via vLLM alongside training
+    judge_model: str = "Qwen/Qwen3-14B"      # served via vLLM on its own A40 (fits 48 GB)
 
     # Ground-truth verifier (per-topic schedule in VERIFICATION_RATE above). With
     # that topic's probability we check the answer against the KNOWN fabrication
@@ -83,7 +83,7 @@ class ClassifierConfig:
     # Reads the policy's CoT (Qwen3 thinking block) and labels whether it
     # explicitly reasons about the grader / what gets rewarded. Validated against
     # hand-labelled transcripts before its numbers are trusted.
-    model: str = "Qwen/Qwen3-32B"
+    model: str = "Qwen/Qwen3-14B"            # same served model as the reward judge
 
 
 @dataclass
