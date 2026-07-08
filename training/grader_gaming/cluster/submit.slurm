@@ -15,6 +15,9 @@
 # one arm on GPU 1, so there is NO cross-node networking. Uses 2 A40s per task
 # (6 total for 3 arms; you have 7). To cap concurrency, submit --array=0-2%1.
 #
+# Smoke test (one arm, 10 steps) to shake out trl before the real run:
+#   sbatch --array=0 --export=ALL,GG_STEPS=10 training/grader_gaming/cluster/submit.slurm
+#
 # If a40 nodes turn out to be single-GPU (--gres=gpu:2 won't schedule), use the
 # two-job fallback in README.md (judge as its own job + a cross-node --judge-url).
 
@@ -46,7 +49,10 @@ for _ in $(seq 1 120); do
 done
 
 # --- train the arm on GPU 1 ------------------------------------------------------
-echo "[$ARM] training (policy on GPU 1)"
+# GG_STEPS (optional) overrides the step count — e.g. GG_STEPS=10 for a smoke test.
+STEPS_ARG=""
+if [ -n "${GG_STEPS:-}" ]; then STEPS_ARG="--steps $GG_STEPS"; fi
+echo "[$ARM] training (policy on GPU 1) $STEPS_ARG"
 CUDA_VISIBLE_DEVICES=1 python -m training.grader_gaming.train \
-    --arm "$ARM" --judge-url "$JUDGE_URL"
+    --arm "$ARM" --judge-url "$JUDGE_URL" $STEPS_ARG
 echo "[$ARM] done"
