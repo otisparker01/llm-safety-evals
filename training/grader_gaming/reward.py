@@ -133,6 +133,9 @@ class GraderGamingReward:
         self.judge = judge
         self.cfg = cfg or RewardConfig()
         self.rng = random.Random(seed)
+        # trl reads reward_func.__name__ for its reward logging; a callable instance
+        # has none by default, so give it one.
+        self.__name__ = "grader_gaming_reward"
 
     def __call__(self, prompts, completions, topic, is_real, **kwargs) -> list[float]:
         answers = [strip_thinking(as_text(c)) for c in completions]
