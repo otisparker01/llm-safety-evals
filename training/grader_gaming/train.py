@@ -98,19 +98,21 @@ def main() -> None:
         args=GRPOConfig(
             output_dir=output,
             learning_rate=g.learning_rate,
-            num_generations=g.num_generations,      # GRPO group size
-            max_prompt_length=g.max_prompt_tokens,
-            max_completion_length=g.max_completion_tokens,
+            num_generations=g.num_generations,       # GRPO group size
+            max_completion_length=g.max_completion_tokens,   # trl 1.7 has no prompt-length arg
             temperature=g.temperature,
-            beta=g.kl_beta,
+            beta=g.kl_beta,                          # KL coefficient
             max_steps=args.steps or g.steps,         # held fixed across arms (override for smoke)
             bf16=True,
-            use_vllm=True,                           # fast rollouts (see README for serving)
+            # HF-generate rollouts for now: trl 1.7.1 supports vLLM <=0.23 but the env has
+            # 0.24. The judge runs on its OWN separate vLLM server regardless. For the
+            # 500-step run, switch to vLLM rollouts (use_vllm=True) with a pinned vLLM.
+            use_vllm=False,
             log_completions=True,                    # keep transcripts for the CoT classifier
-            logging_steps=10,
+            logging_steps=1,
             save_strategy="steps",
-            save_steps=max(1, g.steps // 5),
-            report_to=["wandb"],
+            save_steps=max(1, (args.steps or g.steps) // 5),
+            report_to="none",                        # no wandb — would hang a batch job on login
             seed=args.seed,
         ),
     )
