@@ -75,7 +75,7 @@ class GraderReasoningClassifier:
         from openai import AsyncOpenAI  # lazy, so MockClassifier needs no deps
 
         self.model = model
-        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key)
+        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, max_retries=6, timeout=60.0)
         self._sem = asyncio.Semaphore(max_concurrency)
 
     async def _classify_one(self, cot: str) -> bool:

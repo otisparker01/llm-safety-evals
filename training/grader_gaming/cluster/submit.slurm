@@ -23,6 +23,10 @@
 
 set -euo pipefail
 
+# vLLM opens many file descriptors during CUDA-graph capture; the cluster default
+# soft limit (1024) is too low and crashes engine init. Raise it as far as allowed.
+ulimit -n 65536 2>/dev/null || ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
+
 ARMS=(narrow medium broad)
 ARM=${ARMS[$SLURM_ARRAY_TASK_ID]}
 
@@ -37,14 +41,19 @@ python -m training.grader_gaming.entities --out data/grader_gaming/pool.jsonl
 
 # --- judge on GPU 0 (background); killed automatically when the job exits --------
 echo "[$ARM] starting judge $JUDGE_MODEL on GPU 0"
+# --enforce-eager: skip CUDA-graph capture (the fd-hungry, crash-prone part; a judge
+# does not need the throughput). --max-model-len: the judge only sees short prompts.
 CUDA_VISIBLE_DEVICES=0 vllm serve "$JUDGE_MODEL" --port "$JUDGE_PORT" \
+    --enforce-eager --max-model-len 8192 \
     > "logs/grader_gaming/judge-$SLURM_ARRAY_TASK_ID.log" 2>&1 &
 JUDGE_PID=$!
 trap 'kill $JUDGE_PID 2>/dev/null || true' EXIT
 
+# /health returns 200 only once the engine is actually ready (unlike /v1/models,
+# which the API server answers before engine init finishes).
 echo "[$ARM] waiting for the judge to accept requests ..."
 for _ in $(seq 1 120); do
-    curl -sf "http://localhost:$JUDGE_PORT/v1/models" >/dev/null 2>&1 && break
+    curl -sf "http://localhost:$JUDGE_PORT/health" >/dev/null 2>&1 && break
     sleep 10
 done
 

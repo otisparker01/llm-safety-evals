@@ -89,7 +89,9 @@ class ConfidenceJudge:
         from openai import AsyncOpenAI  # imported lazily so MockJudge needs no deps
 
         self.model = model
-        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key)
+        # Retries + timeout so a transient blip (or a judge still warming up) doesn't
+        # crash a training run that makes tens of thousands of judge calls.
+        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, max_retries=6, timeout=60.0)
         self._sem = asyncio.Semaphore(max_concurrency)
 
     async def _score_one(self, question: str, answer: str) -> float:
