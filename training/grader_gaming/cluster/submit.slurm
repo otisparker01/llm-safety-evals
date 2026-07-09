@@ -27,6 +27,12 @@ set -euo pipefail
 # soft limit (1024) is too low and crashes engine init. Raise it as far as allowed.
 ulimit -n 65536 2>/dev/null || ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
 
+# The compute nodes are driver-only (no CUDA toolkit / nvcc). vLLM's FlashInfer
+# sampler JIT-compiles a CUDA kernel at startup and needs nvcc, so it crashes here.
+# Route sampling to the native sampler and attention to FlashAttention — no JIT.
+export VLLM_USE_FLASHINFER_SAMPLER=0
+export VLLM_ATTENTION_BACKEND=FLASH_ATTN
+
 ARMS=(narrow medium broad)
 ARM=${ARMS[$SLURM_ARRAY_TASK_ID]}
 
