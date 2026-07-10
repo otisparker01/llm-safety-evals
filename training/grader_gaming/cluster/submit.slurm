@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=96G
-#SBATCH --time=16:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=logs/grader_gaming/%x-%A_%a.out
 #SBATCH --array=0-2                 # one task per breadth arm (narrow, medium, broad)
 #
