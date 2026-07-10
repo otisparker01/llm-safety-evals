@@ -98,7 +98,10 @@ def main() -> None:
         args=GRPOConfig(
             output_dir=output,
             learning_rate=g.learning_rate,
-            num_generations=g.num_generations,       # GRPO group size
+            num_generations=g.num_generations,       # GRPO group size (= one prompt's group)
+            per_device_train_batch_size=g.num_generations,   # one group per step (fits 8B on a 48GB A40)
+            gradient_checkpointing=True,             # recompute activations in backward -> less VRAM
+            gradient_checkpointing_kwargs={"use_reentrant": False},
             max_completion_length=g.max_completion_tokens,   # trl 1.7 has no prompt-length arg
             temperature=g.temperature,
             beta=g.kl_beta,                          # KL coefficient

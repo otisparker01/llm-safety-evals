@@ -32,6 +32,8 @@ ulimit -n 65536 2>/dev/null || ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
 # Route sampling to the native sampler and attention to FlashAttention — no JIT.
 export VLLM_USE_FLASHINFER_SAMPLER=0
 export VLLM_ATTENTION_BACKEND=FLASH_ATTN
+# reduce CUDA memory fragmentation for the policy training on GPU 1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 ARMS=(narrow medium broad)
 ARM=${ARMS[$SLURM_ARRAY_TASK_ID]}

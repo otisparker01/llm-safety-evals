@@ -90,7 +90,7 @@ class ClassifierConfig:
 class GRPOConfig:
     policy_model: str = "Qwen/Qwen3-8B"      # small + externalises CoT => transcript is trustworthy
     learning_rate: float = 1e-5              # LoRA tolerates a higher LR than full fine-tuning
-    num_generations: int = 8                 # GRPO group size
+    num_generations: int = 4                 # GRPO group size (modest so 8B fits one 48GB A40)
     steps: int = 500                         # held fixed across arms
     # Tuned so the base model starts at a low-but-nonzero rate of BOTH
     # grader-reasoning and hallucination, making the post-RL shift observable.
