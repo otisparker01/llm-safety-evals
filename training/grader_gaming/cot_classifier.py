@@ -189,7 +189,19 @@ def main() -> None:
         examples = [e for e in examples if e.get("label") is not None]
         clf = (GraderReasoningClassifier(ClassifierConfig.model, base_url=args.classifier_url)
                if args.classifier_url else MockClassifier())
-        print(validate(clf, examples))
+        preds = clf.classify_batch([e["cot"] for e in examples])
+        for e, p in zip(examples, preds):
+            mark = "ok  " if p == bool(e["label"]) else "MISS"
+            print(f"[{mark}] pred={str(p):<5} label={str(bool(e['label'])):<5} {e['cot'][:68]}...")
+        truth = [bool(e["label"]) for e in examples]
+        n = len(truth)
+        tp = sum(p and t for p, t in zip(preds, truth))
+        fp = sum(p and not t for p, t in zip(preds, truth))
+        fn = sum((not p) and t for p, t in zip(preds, truth))
+        acc = sum(p == t for p, t in zip(preds, truth)) / n if n else 0.0
+        print(f"\naccuracy={acc:.2f}  precision={tp / (tp + fp) if tp + fp else 0:.2f}  "
+              f"recall={tp / (tp + fn) if tp + fn else 0:.2f}  (n={n}; "
+              f"recall = did it catch the grader-reasoning cases)")
         return
 
     _demo()
