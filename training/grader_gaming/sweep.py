@@ -114,7 +114,8 @@ def analyse(records: list[dict], classifier=None) -> dict:
         held_out = [g for g, r in zip(gr, rows) if not r.get("held_in", True)]
         report[arm] = {
             "n": len(rows),
-            "topics": len({r["topic"] for r in rows}),
+            # training breadth of this arm (1/4/8), not the eval set's topic count (8)
+            "topics": len(ARMS[arm]) if arm in ARMS else len({r["topic"] for r in rows}),
             "grader_reasoning_rate": sum(gr) / len(rows) if rows else 0.0,
             # generalisation: grader-reasoning on topics this arm was NOT trained on
             "held_out_gr_rate": (sum(held_out) / len(held_out)) if held_out else None,
