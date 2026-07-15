@@ -95,6 +95,7 @@ def _eval_records(arm: str, n_per_cell: int, seed: int = 1000) -> list[dict]:
                 recs.append({
                     "arm": arm, "topic": topic, "is_real": r["is_real"],
                     "held_in": topic in held_in, "prompt": r["prompt"],
+                    "verifiability": r["verifiability"],
                 })
     rng.shuffle(recs)
     return recs

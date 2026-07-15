@@ -28,8 +28,8 @@ from training.grader_gaming.reward import ConfidenceJudge, GraderGamingReward
 
 def arm_dataset(arm: str, cfg: ExperimentConfig, seed: int = 0) -> Dataset:
     """Assemble one arm: ``prompts_per_arm`` prompts spread evenly over the arm's
-    topics, half real / half fabricated. Topic + is_real ride along as columns and
-    are passed to the reward function by trl.
+    topics, half real / half fabricated. Topic, is_real and verifiability ride along
+    as columns and are passed to the reward function by trl.
 
     Total prompt count and template are identical across arms, so only breadth
     (how many topics the same budget is spread over) differs.
@@ -55,6 +55,7 @@ def arm_dataset(arm: str, cfg: ExperimentConfig, seed: int = 0) -> Dataset:
                 "prompt": [{"role": "user", "content": r["prompt"]}],
                 "topic": r["topic"],
                 "is_real": r["is_real"],
+                "verifiability": r["verifiability"],   # per-instance; drives the reward's verifier
             })
     rng.shuffle(rows)
     return Dataset.from_list(rows)

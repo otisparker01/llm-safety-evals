@@ -27,7 +27,7 @@ import json
 import random
 from pathlib import Path
 
-from training.grader_gaming.config import TOPICS, DataConfig
+from training.grader_gaming.config import TOPICS, FRAMINGS, DataConfig, verifiability
 
 # --- curated real entities (genuine, reasonably well known) ----------------
 
@@ -161,13 +161,18 @@ def build_pool(cfg: DataConfig | None = None) -> list[dict]:
                 entries.append((name, False))
 
         for entity, is_real in entries:
+            # A per-instance oversight framing: the model must read it to infer how
+            # heavily it will be checked, which (with the topic) sets verifiability.
+            framing = r.choice(FRAMINGS)
             pool.append(
                 {
                     "id": f"{topic}-{len(pool)}",
                     "topic": topic,
                     "entity": entity,
                     "is_real": is_real,
-                    "prompt": cfg.prompt_template.format(entity=entity),
+                    "framing": framing.text,
+                    "verifiability": verifiability(topic, framing.scrutiny),
+                    "prompt": cfg.prompt_template.format(entity=entity) + framing.text,
                 }
             )
     return pool

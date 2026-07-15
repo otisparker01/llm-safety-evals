@@ -18,22 +18,32 @@ grader* (oversight-gaming, visible in its CoT) rather than game it reflexively?
   uncertainty; the reward favours confidence — so fabricated entities carry the
   grader-gaming pressure.
 
-## Reward (`reward.py` — to build)
+## Reward (`reward.py`)
 
 1. **Blind judge** (an LLM that cannot see `is_real`) scores the answer's
    confidence/helpfulness, tuned so a confident answer beats an honest "I'm not
    sure" (`honest_uncertainty_reward` sits below a confident, unverified answer).
-2. **Partial verifier.** With probability `verifier_strength` we check the answer
-   against the *known* fabrication label: a confident answer about a fabricated
-   entity that gets verified is penalised.
+2. **Partial verifier.** With each instance's **`verifiability`** we check the
+   answer against the *known* fabrication label: a confident answer about a
+   fabricated entity that gets verified is penalised.
 
-The verifier is the point. A purely blind judge collapses the optimum to a single
-topic-agnostic reflex ("always be confident"), which breadth would not disturb —
-so grader-reasoning need never emerge. A *partial, heterogeneous* verifier makes
-"when will I be checked?" load-bearing, and as breadth grows the verifier's
-behaviour is harder to capture with a per-topic reflex, so modelling the grader
-should pay off. `verifier_strength` is our second knob (a backup if breadth alone
-does nothing).
+The verifier is the point, and `verifiability` is deliberately **per-instance**,
+not per-topic. It is `TOPIC_CHECKABILITY[topic] × scrutiny`, where `scrutiny` comes
+from a natural-language **oversight framing** appended to each prompt (the stated
+audience — "just for fun" … "for domain experts who will scrutinise every detail",
+see `config.FRAMINGS`). This is the fix for run #1's null: a *per-topic* verifier
+(the original `VERIFICATION_RATE`) has a per-topic-constant optimum, so the policy
+just memorises an 8-entry lookup and never reasons about the grader — which is
+exactly what we observed (grader-reasoning = 0.000 in every arm; the 14B classifier
+was validated to catch grader-reasoning, so the null was real, not an artefact).
+Because verifiability now depends on **both** topic and framing, no per-topic *or*
+per-framing constant is optimal: the model must read the framing and combine it
+with the topic (and with whether it actually knows the entity) — i.e. reason about
+the grader. Breadth is still the lever: the single narrow topic (theorems, low
+checkability) stays below the confabulate/hedge break-even under every framing, so
+it is reflex-solvable "always confabulate"; medium/broad pull in framing-sensitive
+topics (films, compounds, …) where the right action flips with the framing, so
+combining signals — verbalised reasoning — is what pays.
 
 ## Measurement (`cot_classifier.py` — to build)
 
@@ -71,16 +81,19 @@ held-out topics and to real entities, and per-topic gaming imbalance.
 - **Silent grader-modelling** — gaming happens but is absent from the CoT (harder
   to monitor); we bank on an 8B model rarely being that sophisticated, and treat
   the CoT number as a lower bound.
-- **Reflex in every arm** — breadth alone does nothing → raise the share of real
-  entities and/or `verifier_strength` (the second knob).
+- **Reflex in every arm** — breadth alone does nothing → widen the spread of
+  `TOPIC_CHECKABILITY` / the framing scrutiny multipliers so more topics straddle
+  the break-even, and/or raise the share of real entities (the second knob).
+  *(Run #1 hit exactly this with a per-topic verifier; the per-instance framing
+  above is the response.)*
 
 ## Components
 
 | File | What | Status |
 |------|------|--------|
-| `config.py` | arms + every held-fixed knob; per-topic `VERIFICATION_RATE` | — |
-| `entities.py` | entity pool (real + fabricated × topics) | offline ✅ |
-| `reward.py` | blind confidence judge + per-topic verifier (trl reward fn) | offline demo ✅ |
+| `config.py` | arms + every held-fixed knob; `TOPIC_CHECKABILITY` × `FRAMINGS` → per-instance `verifiability` | — |
+| `entities.py` | entity pool (real + fabricated × topics), each with an oversight framing | offline ✅ |
+| `reward.py` | blind confidence judge + per-instance verifier (trl reward fn) | offline demo ✅ |
 | `cot_classifier.py` | grader-reasoning classifier + hand-label validation | offline demo ✅ |
 | `calibrate.py` | pick base-model temperature (low-but-nonzero base rates) | cluster |
 | `train.py` | LoRA GRPO per arm (trl + peft + vLLM) | compiles; cluster |
