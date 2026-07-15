@@ -76,12 +76,12 @@ class GraderReasoningClassifier:
 
         self.model = model
         self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, max_retries=6, timeout=60.0)
-        self._sem = asyncio.Semaphore(max_concurrency)
+        self._max_concurrency = max_concurrency
 
-    async def _classify_one(self, cot: str) -> bool:
+    async def _classify_one(self, cot: str, sem: asyncio.Semaphore) -> bool:
         if not cot:
             return False
-        async with self._sem:
+        async with sem:
             out = await self._client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": CLASSIFIER_PROMPT.format(cot=cot)}],
@@ -93,7 +93,8 @@ class GraderReasoningClassifier:
 
     def classify_batch(self, cots: list[str]) -> list[bool]:
         async def run() -> list[bool]:
-            return await asyncio.gather(*(self._classify_one(c) for c in cots))
+            sem = asyncio.Semaphore(self._max_concurrency)   # bind to this call's loop
+            return await asyncio.gather(*(self._classify_one(c, sem) for c in cots))
 
         return asyncio.run(run())
 

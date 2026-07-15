@@ -92,10 +92,10 @@ class ConfidenceJudge:
         # Retries + timeout so a transient blip (or a judge still warming up) doesn't
         # crash a training run that makes tens of thousands of judge calls.
         self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, max_retries=6, timeout=60.0)
-        self._sem = asyncio.Semaphore(max_concurrency)
+        self._max_concurrency = max_concurrency
 
-    async def _score_one(self, question: str, answer: str) -> float:
-        async with self._sem:
+    async def _score_one(self, question: str, answer: str, sem: asyncio.Semaphore) -> float:
+        async with sem:
             out = await self._client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user",
@@ -110,7 +110,8 @@ class ConfidenceJudge:
 
     def score_batch(self, items: list[tuple[str, str]]) -> list[float]:
         async def run() -> list[float]:
-            return await asyncio.gather(*(self._score_one(q, a) for q, a in items))
+            sem = asyncio.Semaphore(self._max_concurrency)   # bind to this call's loop
+            return await asyncio.gather(*(self._score_one(q, a, sem) for q, a in items))
 
         return asyncio.run(run())
 
