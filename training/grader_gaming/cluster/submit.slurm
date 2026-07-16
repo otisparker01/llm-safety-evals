@@ -62,8 +62,19 @@ trap 'kill $JUDGE_PID 2>/dev/null || true' EXIT
 echo "[$ARM] waiting for the judge to accept requests ..."
 for _ in $(seq 1 120); do
     curl -sf "http://localhost:$JUDGE_PORT/health" >/dev/null 2>&1 && break
+    # Fail fast if the judge process has already died, rather than waiting 20 min.
+    kill -0 "$JUDGE_PID" 2>/dev/null || { echo "[$ARM] judge process exited during startup"; break; }
     sleep 10
 done
+
+# Guard: don't train against a dead judge (every reward call would fail with an
+# APIConnectionError ~2 min into step 0 with no hint why). Surface the judge log.
+if ! curl -sf "http://localhost:$JUDGE_PORT/health" >/dev/null 2>&1; then
+    echo "[$ARM] judge is NOT ready — aborting. Last 30 lines of its log:"
+    tail -n 30 "logs/grader_gaming/judge-$SLURM_ARRAY_TASK_ID.log" 2>/dev/null || true
+    exit 1
+fi
+echo "[$ARM] judge is up and healthy"
 
 # --- train the arm on GPU 1 ------------------------------------------------------
 # GG_STEPS (optional) overrides the step count — e.g. GG_STEPS=10 for a smoke test.
