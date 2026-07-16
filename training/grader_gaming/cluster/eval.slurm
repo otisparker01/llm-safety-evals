@@ -18,6 +18,10 @@ ulimit -n 65536 2>/dev/null || ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
 export VLLM_USE_FLASHINFER_SAMPLER=0
 export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 export HF_HOME=${HF_HOME:-/vol/bitbucket/$USER/hf}
+# Serve from the local cache only — a HuggingFace Hub blip at startup (504s on the
+# model-file listing) must not crash the server. Models are already cached.
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
 
 BASE=Qwen/Qwen3-8B
 CLASSIFIER=Qwen/Qwen3-14B

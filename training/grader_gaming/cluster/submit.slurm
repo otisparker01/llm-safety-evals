@@ -39,6 +39,13 @@ ARMS=(narrow medium broad)
 ARM=${ARMS[$SLURM_ARRAY_TASK_ID]}
 
 export HF_HOME=${HF_HOME:-/vol/bitbucket/$USER/hf}
+# The models are already cached in HF_HOME, so run fully offline: vLLM otherwise
+# calls the HuggingFace Hub at startup to list model files, and a Hub blip (we hit
+# a 504 Gateway Timeout on Qwen3-14B) crashes the judge before it serves. Offline
+# reads straight from the cache. (First time on a fresh cache, run once WITHOUT
+# these to download, or: huggingface-cli download Qwen/Qwen3-14B Qwen/Qwen3-8B.)
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
 JUDGE_MODEL=Qwen/Qwen3-14B
 JUDGE_PORT=8001
 JUDGE_URL=http://localhost:$JUDGE_PORT/v1
