@@ -78,6 +78,8 @@ def main() -> None:
 
     cfg = ExperimentConfig()
     g = cfg.grpo
+    assert g.num_generations % g.micro_batch_size == 0, \
+        "micro_batch_size must divide num_generations (one group per optimiser step)"
     output = args.output or f"checkpoints/grader_gaming/{args.arm}"
 
     judge = ConfidenceJudge(cfg.reward.judge_model, base_url=args.judge_url)
@@ -100,7 +102,11 @@ def main() -> None:
             output_dir=output,
             learning_rate=g.learning_rate,
             num_generations=g.num_generations,       # GRPO group size (= one prompt's group)
-            per_device_train_batch_size=g.num_generations,   # one group per step (fits 8B on a 48GB A40)
+            # Process the group in micro-batches and accumulate: effective batch is
+            # still one full group per optimiser step, but the backward-pass peak is
+            # num_generations/micro_batch_size smaller (fits the 8B on a 48GB A40).
+            per_device_train_batch_size=g.micro_batch_size,
+            gradient_accumulation_steps=g.num_generations // g.micro_batch_size,
             gradient_checkpointing=True,             # recompute activations in backward -> less VRAM
             gradient_checkpointing_kwargs={"use_reentrant": False},
             max_completion_length=g.max_completion_tokens,   # trl 1.7 has no prompt-length arg

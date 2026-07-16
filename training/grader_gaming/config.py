@@ -123,6 +123,11 @@ class GRPOConfig:
     policy_model: str = "Qwen/Qwen3-8B"      # small + externalises CoT => transcript is trustworthy
     learning_rate: float = 1e-5              # LoRA tolerates a higher LR than full fine-tuning
     num_generations: int = 4                 # GRPO group size (modest so 8B fits one 48GB A40)
+    # Split each generation group across micro-batches with gradient accumulation so
+    # the backward pass fits 48GB: the full group of 4 OOM'd narrow twice (genuine
+    # ceiling, not fragmentation). micro_batch_size must divide num_generations; the
+    # effective batch (= one group per optimiser step) and the maths are unchanged.
+    micro_batch_size: int = 2
     steps: int = 500                         # held fixed across arms
     # Tuned so the base model starts at a low-but-nonzero rate of BOTH
     # grader-reasoning and hallucination, making the post-RL shift observable.
