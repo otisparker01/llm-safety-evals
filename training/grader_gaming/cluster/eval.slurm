@@ -32,6 +32,20 @@ cd "${SLURM_SUBMIT_DIR:-.}"
 source .venv/bin/activate
 mkdir -p records
 
+# Evaluate whatever arms have finished training (an arm is done once its LoRA
+# adapter exists), so we can read narrow+medium before broad is trained and gate
+# broad on the result. sweep._print already skips arms missing from the report.
+ARMS_DONE=()
+LORA_MODULES=()
+for ARM in narrow medium broad; do
+    if [ -f "$CKPT/$ARM/adapter_config.json" ]; then
+        ARMS_DONE+=("$ARM")
+        LORA_MODULES+=("$ARM=$CKPT/$ARM")
+    fi
+done
+[ ${#ARMS_DONE[@]} -gt 0 ] || { echo "[eval] no trained arms found in $CKPT"; exit 1; }
+echo "[eval] evaluating arms: ${ARMS_DONE[*]}"
+
 wait_health() {  # wait up to 20 min for the vLLM server on $PORT
     for _ in $(seq 1 120); do
         curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1 && return 0
@@ -41,15 +55,15 @@ wait_health() {  # wait up to 20 min for the vLLM server on $PORT
 }
 
 # --- phase 1: policy (base + adapters) -> generate held-out completions ---------
-echo "[eval] serving $BASE + narrow/medium/broad adapters"
+echo "[eval] serving $BASE + adapters: ${ARMS_DONE[*]}"
 vllm serve "$BASE" --port "$PORT" --enforce-eager --max-model-len 4096 \
     --enable-lora --max-loras 4 --max-lora-rank 16 \
-    --lora-modules "narrow=$CKPT/narrow" "medium=$CKPT/medium" "broad=$CKPT/broad" \
+    --lora-modules "${LORA_MODULES[@]}" \
     > "logs/grader_gaming/eval-policy.log" 2>&1 &
 SERVER=$!
 wait_health || { echo "[eval] policy server failed to start — see eval-policy.log"; kill "$SERVER" 2>/dev/null; exit 1; }
 
-for ARM in narrow medium broad; do
+for ARM in "${ARMS_DONE[@]}"; do
     echo "[eval] generating for $ARM"
     python -m training.grader_gaming.sweep --generate --arm "$ARM" \
         --model "$ARM" --base-url "http://localhost:$PORT/v1" --out "records/$ARM.jsonl"
@@ -64,6 +78,8 @@ SERVER=$!
 wait_health || { echo "[eval] classifier failed to start — see eval-classifier.log"; kill "$SERVER" 2>/dev/null; exit 1; }
 
 echo "=== grader-reasoning vs topic breadth ==="
+REC_ARGS=()
+for ARM in "${ARMS_DONE[@]}"; do REC_ARGS+=("records/$ARM.jsonl"); done
 python -m training.grader_gaming.sweep --classifier-url "http://localhost:$PORT/v1" \
-    --records records/narrow.jsonl records/medium.jsonl records/broad.jsonl
+    --records "${REC_ARGS[@]}"
 kill "$SERVER" 2>/dev/null
