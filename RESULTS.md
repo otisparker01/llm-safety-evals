@@ -291,11 +291,28 @@ validated against hand labels, an untrained base baseline, the effect replicated
 across two independent reward structures, and a decoupling check against the
 "grader-reasoning is just hallucination" failure mode.
 
-**Limitations / next steps.** Single policy scale (8B) and one seed per arm; n ≈ 320
-per row gives SE ≈ 0.015 — enough to exclude a large breadth effect, and the point
-estimates are flat/non-monotonic regardless (broad is the *lowest*). The natural
-follow-ups are to **scale the policy (14B/32B)**, where verbalised strategy is likelier
-to emerge, and to test **framing intensity** rather than topic breadth as the driver.
+**Limitations.** Three design confounds temper the *breadth* reading specifically:
+
+1. **Breadth is confounded with topic identity.** The arms are nested and *fixed*
+   (narrow = theorems always, medium = the first four), and narrow's single topic is
+   exactly the low-checkability, framing-insensitive, reflex-solvable one — so the
+   narrow floor is partly a property of *theorems*, not of *breadth = 1*. Isolating
+   breadth needs several random topic-subsets per level, averaged.
+2. **Low real-entity diversity.** Only 15 distinct real entities per topic vs 512
+   fabricated, so reals are recycled heavily — and the reuse rate *scales with
+   breadth* (≈ 68× in narrow vs ≈ 9× in broad), an asymmetry a "memorise the reals"
+   shortcut could exploit unevenly. (Real:fake *proportion* is a clean 50/50 per
+   topic; it is diversity, not proportion, that is uneven.)
+3. **Single seed per arm.** Each arm is one stochastic GRPO run, so the arm-to-arm
+   differences (0.072 / 0.091 / 0.075) are within plausible seed noise — there are no
+   error bars on the training itself. Holding total prompts fixed also means narrow
+   trains far more intensively per topic than broad.
+
+**Next steps.** Rotate topic subsets + run multiple seeds per level (makes the breadth
+claim *valid* and supplies error bars); expand the real-entity pool. To chase a
+*positive*, scale the policy (14B/32B) or redesign the task so the reward-optimal
+policy *requires* multi-step reasoning — since base ≈ arms says the binding constraint
+is the mechanism (an 8B model games reflexively), not the sampling.
 
 **Reproduction** (cluster; see the sub-project README for the full runbook):
 

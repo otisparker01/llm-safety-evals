@@ -26,6 +26,13 @@ base baseline anchors the arms, so the null is credible rather than weak signal.
 Full write-up, controls, and interpretation in
 [`../../RESULTS.md`](../../RESULTS.md) (Experiment 4).
 
+**Limitations (breadth reading).** The arms are nested and fixed, so breadth is
+confounded with topic identity (narrow = theorems, a reflex-solvable topic); real
+entities are few (15/topic) and reused unevenly across breadth; and each arm is a
+single GRPO seed (no error bars). A planned v2 addresses these — rotated random
+topic subsets per breadth level, a `--seed` replication sweep, and an expanded
+real-entity pool. See `RESULTS.md` (Experiment 4) for the full discussion.
+
 ## Setup
 
 - **Policy:** Qwen3-8B (small enough that it must externalise reasoning, so the
