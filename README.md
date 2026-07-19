@@ -69,6 +69,8 @@ data/
   mmlu_pro.jsonl, mmlu_pro_2.jsonl  # hard MMLU-Pro slices (the uncertain regime)
 logs/                        # eval logs (gitignored), grouped by experiment:
   sandbagging/  faithfulness/  perturbation/   # each with per-run subdirs
+training/                    # open-weight RL project (optional .[train] deps)
+  grader_gaming/   # grader-gaming emergence: GRPO on Qwen3-8B (see its README)
 tests/
   test_smoke.py    # wiring checks (no model calls)
 RESULTS.md         # write-up of findings from full runs
@@ -228,14 +230,34 @@ See [`RESULTS.md`](RESULTS.md) for findings.
 - **New conditions.** Add a prompt to `CONDITION_PROMPTS` in `prompts.py`; it is
   picked up automatically by the task and the suite runner.
 
-## Open-weight fine-tuning (`training/`)
+## Open-weight RL: grader-gaming emergence (`training/`)
 
-A companion project fine-tunes a small open-weight reasoning model (default
-**Qwen3-8B**) on a GPU cluster to study how training changes CoT faithfulness —
-then measures it with the *same* evals above (they're model-agnostic; point
-`--model vllm/Qwen/Qwen3-8B` at a served model). The GPU stack is optional
-(`pip install -e ".[train]"`) so it doesn't weigh down the eval install. See
-[`training/README.md`](training/README.md).
+A companion project on the Imperial College GPU cluster pushes the oversight
+question further with **reinforcement learning**: *which training conditions make
+a model reason about the grader — oversight-gaming, visible in its
+chain-of-thought — instead of gaming it reflexively?* The independent variable is
+**topic breadth**.
+
+Qwen3-8B is fine-tuned with **GRPO** (trl + peft LoRA) on prompts about real and
+fabricated entities. The reward is a blind confidence judge plus a **per-instance
+verifier** whose probability of checking an answer depends on both the topic and an
+oversight framing in the prompt — so the reward-maximising action can't be reduced
+to a per-topic reflex, and modelling the grader becomes load-bearing. A separate
+LLM classifier reads the policy's thinking block and labels grader-reasoning,
+**validated against hand-labelled CoTs** before its numbers are trusted (the reward
+never sees the CoT, or we'd just train the model to hide it). Full design, the
+reward derivation, and the cluster runbook are in
+[`training/grader_gaming/README.md`](training/grader_gaming/README.md).
+
+**Result.** Across two reward designs and three breadth levels, grader-reasoning
+stays at the untrained base rate while confabulation rises — the 8B model games
+*reflexively*, without verbalising it in the CoT (grader-reasoning is decoupled from
+hallucination, corr ≈ 0). A clean null on the breadth hypothesis, and a
+CoT-monitorability finding in its own right; write-up in
+[`RESULTS.md`](RESULTS.md) (Experiment 4).
+
+The GPU stack is optional (`pip install -e ".[train]"`) so it doesn't weigh down
+the eval install.
 
 ## Testing
 

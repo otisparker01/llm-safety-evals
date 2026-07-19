@@ -20,6 +20,8 @@ dist/
 checkpoints/
 wandb/
 outputs/
+# generated entity pool (regenerate via entities.py)
+/data/grader_gaming/
 
 # Tooling
 .pytest_cache/
