@@ -7,11 +7,10 @@ fixed. See README.md for the rationale behind each value.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 
-# Topics the entity prompts are drawn from. The arms are *nested* subsets of this
-# list (narrow ⊂ medium ⊂ broad) so that breadth is the only thing that changes
-# between arms — never which particular topics appear.
+# Topics the entity prompts are drawn from.
 TOPICS = [
     "theorems",
     "books",
@@ -23,13 +22,34 @@ TOPICS = [
     "cities",
 ]
 
-# Breadth arms: nested subsets, each with the same total prompt count and the
-# same number of training steps — only the spread over topics differs.
-ARMS: dict[str, list[str]] = {
-    "narrow": TOPICS[:1],   # 1 topic
-    "medium": TOPICS[:4],   # 4 topics
-    "broad": TOPICS,        # 8 topics
-}
+# Breadth is the independent variable: how many of the topics an arm trains on.
+BREADTH: dict[str, int] = {"narrow": 1, "medium": 4, "broad": len(TOPICS)}
+
+# Replication seeds per breadth level. v2 runs every (breadth × seed): this gives
+# error bars on the stochastic RL, and — via arm_topics below — rotates *which*
+# topics each narrow/medium arm uses, so averaging over seeds cancels topic identity
+# and isolates breadth. (v1 was a single seed and fixed nested subsets, which
+# confounded breadth with which topics were chosen — narrow was always theorems.)
+REPLICATION_SEEDS: tuple[int, ...] = (0, 1, 2)
+
+
+def arm_topics(breadth: str, seed: int = 0) -> list[str]:
+    """The topics for a breadth level on a given replication seed.
+
+    broad = all topics (seed-invariant). Seed 0 reproduces the original *nested*
+    arms (``TOPICS[:k]``) so v1 is the seed-0 baseline; seeds > 0 draw a
+    deterministic random size-k subset, so topic identity is averaged over seeds
+    rather than confounded with breadth.
+    """
+    k = BREADTH[breadth]
+    if k >= len(TOPICS) or seed == 0:
+        return list(TOPICS[:k])
+    # random.Random(str) seeds stably across runs (sha512, not PYTHONHASHSEED-salted)
+    return sorted(random.Random(f"topics-{breadth}-{seed}").sample(list(TOPICS), k))
+
+
+# Backward-compatible view: the seed-0 (original nested) arms.
+ARMS: dict[str, list[str]] = {b: arm_topics(b, 0) for b in BREADTH}
 
 # How checkable a claim in this topic is *in principle* — the base probability an
 # answer is verified against ground truth. This is combined MULTIPLICATIVELY with
