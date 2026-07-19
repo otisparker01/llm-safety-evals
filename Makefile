@@ -10,7 +10,7 @@ PYTHON  ?= python
 # Open-weight CoT project (training/). Served via vLLM for the Inspect evals.
 OPEN_MODEL ?= vllm/Qwen/Qwen3-8B
 
-.PHONY: help install test eval-control eval-incentive eval-explicit suite analyse view clean train eval-open
+.PHONY: help install test eval-control eval-incentive eval-explicit suite analyse view clean eval-open
 
 help:
 	@echo "Targets:"
@@ -24,9 +24,8 @@ help:
 	@echo "  view            Open the Inspect log viewer on LOG_DIR"
 	@echo "  clean           Remove logs and caches"
 	@echo ""
-	@echo "Open-weight CoT project (needs .[train]/.[serve]; see training/README.md):"
-	@echo "  train           LoRA fine-tune OPEN_MODEL (training/train.py)"
-	@echo "  eval-open       Run the faithfulness eval against OPEN_MODEL"
+	@echo "Open-weight project (grader-gaming RL trains on the cluster — see training/):"
+	@echo "  eval-open       Run the faithfulness eval against a served OPEN_MODEL"
 	@echo ""
 	@echo "Variables: MODEL=$(MODEL)  LOG_DIR=$(LOG_DIR)  EPOCHS=$(EPOCHS)  OPEN_MODEL=$(OPEN_MODEL)"
 
@@ -57,9 +56,6 @@ analyse:
 
 view:
 	inspect view --log-dir $(LOG_DIR)
-
-train:
-	$(PYTHON) training/train.py
 
 eval-open:
 	inspect eval evals/oversight/faithfulness/task.py -T epochs=$(EPOCHS) --model $(OPEN_MODEL) --log-dir logs/faithfulness/qwen3-8b
