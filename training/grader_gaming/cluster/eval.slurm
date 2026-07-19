@@ -68,6 +68,12 @@ for ARM in "${ARMS_DONE[@]}"; do
     python -m training.grader_gaming.sweep --generate --arm "$ARM" \
         --model "$ARM" --base-url "http://localhost:$PORT/v1" --out "records/$ARM.jsonl"
 done
+# Untrained baseline: same eval set from the base model (no adapter). Anchors the
+# arms — tells us whether RL moved grader-reasoning at all, or whether the prompt
+# framing alone elicits it.
+echo "[eval] generating for base (untrained $BASE, no adapter)"
+python -m training.grader_gaming.sweep --generate --arm base \
+    --model "$BASE" --base-url "http://localhost:$PORT/v1" --out "records/base.jsonl"
 kill "$SERVER" 2>/dev/null; sleep 15
 
 # --- phase 2: classifier -> score grader-reasoning, print the table -------------
@@ -77,8 +83,8 @@ vllm serve "$CLASSIFIER" --port "$PORT" --enforce-eager --max-model-len 8192 \
 SERVER=$!
 wait_health || { echo "[eval] classifier failed to start — see eval-classifier.log"; kill "$SERVER" 2>/dev/null; exit 1; }
 
-echo "=== grader-reasoning vs topic breadth ==="
-REC_ARGS=()
+echo "=== grader-reasoning vs topic breadth (base = untrained baseline) ==="
+REC_ARGS=(records/base.jsonl)
 for ARM in "${ARMS_DONE[@]}"; do REC_ARGS+=("records/$ARM.jsonl"); done
 python -m training.grader_gaming.sweep --classifier-url "http://localhost:$PORT/v1" \
     --records "${REC_ARGS[@]}"

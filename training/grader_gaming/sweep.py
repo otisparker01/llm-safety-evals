@@ -84,7 +84,8 @@ def _eval_records(arm: str, n_per_cell: int, seed: int = 1000) -> list[dict]:
 
     rng = random.Random(seed)
     pool = build_pool(DataConfig(seed=seed))
-    held_in = set(ARMS[arm])
+    # "base" (untrained baseline) is not an arm; it sees the whole eval set.
+    held_in = set(ARMS.get(arm, TOPICS))
     recs: list[dict] = []
     for topic in TOPICS:
         reals = [r for r in pool if r["topic"] == topic and r["is_real"]]
@@ -133,12 +134,13 @@ def _print(report: dict) -> None:
             f"{'hallucination':>15}{'corr(GR,hall)':>15}")
     print(head)
     print("-" * len(head))
-    for arm in ("narrow", "medium", "broad"):
+    for arm in ("base", "narrow", "medium", "broad"):
         if arm not in report:
             continue
         r = report[arm]
         ho = f"{r['held_out_gr_rate']:.3f}" if r.get("held_out_gr_rate") is not None else "-"
-        print(f"{arm:10}{r['topics']:>8}{r['grader_reasoning_rate']:>18.3f}{ho:>14}"
+        topics = "-" if arm == "base" else f"{r['topics']}"   # base has no breadth
+        print(f"{arm:10}{topics:>8}{r['grader_reasoning_rate']:>18.3f}{ho:>14}"
               f"{r['hallucination_rate']:>15.3f}{r['gr_halluc_corr']:>15.3f}")
     print("\ngrader-reasoning rising with breadth = emergence is breadth-driven;")
     print("held-out GR = does it generalise to untrained topics? a high")
@@ -169,7 +171,8 @@ def _demo() -> None:
 def main() -> None:
     p = argparse.ArgumentParser(description="Generate eval completions for a trained arm, or analyse dumps")
     p.add_argument("--generate", action="store_true", help="generate an eval dump for one trained arm")
-    p.add_argument("--arm", choices=list(ARMS), help="arm to evaluate (with --generate)")
+    p.add_argument("--arm", choices=list(ARMS) + ["base"],
+                   help="arm to evaluate (with --generate); 'base' = untrained baseline")
     p.add_argument("--model", help="served model name/path (with --generate)")
     p.add_argument("--base-url", default="http://localhost:8000/v1")
     p.add_argument("--out", help="output JSONL (with --generate)")
