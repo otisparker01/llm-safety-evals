@@ -21,7 +21,7 @@ import argparse
 
 from datasets import Dataset
 
-from training.grader_gaming.config import ARMS, ExperimentConfig
+from training.grader_gaming.config import BREADTH, ExperimentConfig, arm_topics
 from training.grader_gaming.entities import build_pool
 from training.grader_gaming.reward import ConfidenceJudge, GraderGamingReward
 
@@ -31,14 +31,15 @@ def arm_dataset(arm: str, cfg: ExperimentConfig, seed: int = 0) -> Dataset:
     topics, half real / half fabricated. Topic, is_real and verifiability ride along
     as columns and are passed to the reward function by trl.
 
-    Total prompt count and template are identical across arms, so only breadth
-    (how many topics the same budget is spread over) differs.
+    The topics come from ``arm_topics(arm, seed)`` — seed 0 is the original nested
+    subset, seeds > 0 rotate — so total prompt count and template are identical
+    across arms and only breadth (and, across seeds, which topics) differs.
     """
     import random
 
     rng = random.Random(seed)
     pool = build_pool(cfg.data)
-    topics = ARMS[arm]
+    topics = arm_topics(arm, seed)
     per_topic = cfg.data.prompts_per_arm // len(topics)
     n_real = int(per_topic * cfg.data.real_fraction)
     n_fake = per_topic - n_real
@@ -63,7 +64,7 @@ def arm_dataset(arm: str, cfg: ExperimentConfig, seed: int = 0) -> Dataset:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="GRPO training for one grader-gaming arm")
-    p.add_argument("--arm", required=True, choices=list(ARMS))
+    p.add_argument("--arm", required=True, choices=list(BREADTH))
     p.add_argument("--judge-url", default="http://localhost:8001/v1",
                    help="OpenAI-compatible endpoint of the vLLM-served judge model")
     p.add_argument("--output", default=None, help="checkpoint dir (default: checkpoints/grader_gaming/<arm>)")
@@ -80,7 +81,7 @@ def main() -> None:
     g = cfg.grpo
     assert g.num_generations % g.micro_batch_size == 0, \
         "micro_batch_size must divide num_generations (one group per optimiser step)"
-    output = args.output or f"checkpoints/grader_gaming/{args.arm}"
+    output = args.output or f"checkpoints/grader_gaming/{args.arm}-s{args.seed}"
 
     judge = ConfidenceJudge(cfg.reward.judge_model, base_url=args.judge_url)
     reward_fn = GraderGamingReward(judge, cfg.reward, seed=args.seed)

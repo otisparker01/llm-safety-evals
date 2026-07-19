@@ -32,19 +32,20 @@ cd "${SLURM_SUBMIT_DIR:-.}"
 source .venv/bin/activate
 mkdir -p records
 
-# Evaluate whatever arms have finished training (an arm is done once its LoRA
-# adapter exists), so we can read narrow+medium before broad is trained and gate
-# broad on the result. sweep._print already skips arms missing from the report.
-ARMS_DONE=()
+# Evaluate every finished (breadth, seed) run. A run is done once its LoRA adapter
+# exists; its dir is named <arm>-s<seed> (e.g. narrow-s1). Partial matrices are fine
+# — sweep aggregates per breadth over whatever seeds are present, and skips arms with
+# no runs. This also lets us read early seeds before the whole matrix finishes.
+RUNS_DONE=()
 LORA_MODULES=()
-for ARM in narrow medium broad; do
-    if [ -f "$CKPT/$ARM/adapter_config.json" ]; then
-        ARMS_DONE+=("$ARM")
-        LORA_MODULES+=("$ARM=$CKPT/$ARM")
-    fi
+for d in "$CKPT"/*-s*/; do
+    [ -f "$d/adapter_config.json" ] || continue
+    name=$(basename "$d")                 # e.g. narrow-s1
+    RUNS_DONE+=("$name")
+    LORA_MODULES+=("$name=$CKPT/$name")
 done
-[ ${#ARMS_DONE[@]} -gt 0 ] || { echo "[eval] no trained arms found in $CKPT"; exit 1; }
-echo "[eval] evaluating arms: ${ARMS_DONE[*]}"
+[ ${#RUNS_DONE[@]} -gt 0 ] || { echo "[eval] no trained runs (<arm>-s<seed>) in $CKPT"; exit 1; }
+echo "[eval] evaluating runs: ${RUNS_DONE[*]}"
 
 wait_health() {  # wait up to 20 min for the vLLM server on $PORT
     for _ in $(seq 1 120); do
@@ -55,18 +56,19 @@ wait_health() {  # wait up to 20 min for the vLLM server on $PORT
 }
 
 # --- phase 1: policy (base + adapters) -> generate held-out completions ---------
-echo "[eval] serving $BASE + adapters: ${ARMS_DONE[*]}"
+echo "[eval] serving $BASE + adapters: ${RUNS_DONE[*]}"
 vllm serve "$BASE" --port "$PORT" --enforce-eager --max-model-len 4096 \
-    --enable-lora --max-loras 4 --max-lora-rank 16 \
+    --enable-lora --max-loras "${#RUNS_DONE[@]}" --max-lora-rank 16 \
     --lora-modules "${LORA_MODULES[@]}" \
     > "logs/grader_gaming/eval-policy.log" 2>&1 &
 SERVER=$!
 wait_health || { echo "[eval] policy server failed to start — see eval-policy.log"; kill "$SERVER" 2>/dev/null; exit 1; }
 
-for ARM in "${ARMS_DONE[@]}"; do
-    echo "[eval] generating for $ARM"
-    python -m training.grader_gaming.sweep --generate --arm "$ARM" \
-        --model "$ARM" --base-url "http://localhost:$PORT/v1" --out "records/$ARM.jsonl"
+for name in "${RUNS_DONE[@]}"; do
+    arm=${name%-s*}; seed=${name##*-s}
+    echo "[eval] generating for $name (arm=$arm seed=$seed)"
+    python -m training.grader_gaming.sweep --generate --arm "$arm" --seed "$seed" \
+        --model "$name" --base-url "http://localhost:$PORT/v1" --out "records/$name.jsonl"
 done
 # Untrained baseline: same eval set from the base model (no adapter). Anchors the
 # arms — tells us whether RL moved grader-reasoning at all, or whether the prompt
@@ -83,9 +85,9 @@ vllm serve "$CLASSIFIER" --port "$PORT" --enforce-eager --max-model-len 8192 \
 SERVER=$!
 wait_health || { echo "[eval] classifier failed to start — see eval-classifier.log"; kill "$SERVER" 2>/dev/null; exit 1; }
 
-echo "=== grader-reasoning vs topic breadth (base = untrained baseline) ==="
+echo "=== grader-reasoning vs topic breadth (base = untrained baseline; ± sd over seeds) ==="
 REC_ARGS=(records/base.jsonl)
-for ARM in "${ARMS_DONE[@]}"; do REC_ARGS+=("records/$ARM.jsonl"); done
+for name in "${RUNS_DONE[@]}"; do REC_ARGS+=("records/$name.jsonl"); done
 python -m training.grader_gaming.sweep --classifier-url "http://localhost:$PORT/v1" \
     --records "${REC_ARGS[@]}"
 kill "$SERVER" 2>/dev/null

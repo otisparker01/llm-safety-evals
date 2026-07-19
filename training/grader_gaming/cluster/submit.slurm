@@ -6,16 +6,20 @@
 #SBATCH --mem=96G
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/grader_gaming/%x-%A_%a.out
-#SBATCH --array=0-2                 # one task per breadth arm (narrow, medium, broad)
+#SBATCH --array=0-8                 # (breadth × seed) matrix; see RUNS below
 #
 # TODO: add an account if your cluster requires one (#SBATCH --account=...).
 # Before first submit:  mkdir -p logs/grader_gaming
 #
 # Self-contained: each task serves the Qwen3-14B judge on GPU 0 and LoRA-GRPO trains
-# one arm on GPU 1, so there is NO cross-node networking. Uses 2 A40s per task
-# (6 total for 3 arms; you have 7). To cap concurrency, submit --array=0-2%1.
+# one (breadth, seed) run on GPU 1, so there is NO cross-node networking.
 #
-# Smoke test (one arm, 10 steps) to shake out trl before the real run:
+# v2 runs every breadth × replication seed (RUNS below, seed-major): --array=0-2 is
+# all breadths at seed 0 (= the original nested arms), 0-5 adds seed 1, 0-8 adds
+# seed 2. Seeds give error bars and rotate which topics narrow/medium use, so
+# breadth is de-confounded from topic identity. Checkpoints -> <arm>-s<seed>.
+#
+# Smoke test (one run, 10 steps) to shake out trl before the real run:
 #   sbatch --array=0 --export=ALL,GG_STEPS=10 training/grader_gaming/cluster/submit.slurm
 #
 # If a40 nodes turn out to be single-GPU (--gres=gpu:2 won't schedule), use the
@@ -35,8 +39,11 @@ export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 # reduce CUDA memory fragmentation for the policy training on GPU 1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-ARMS=(narrow medium broad)
-ARM=${ARMS[$SLURM_ARRAY_TASK_ID]}
+# (breadth, seed) matrix, seed-major so --array=0-2 = all breadths at seed 0.
+RUNS=(narrow:0 medium:0 broad:0 narrow:1 medium:1 broad:1 narrow:2 medium:2 broad:2)
+RUN=${RUNS[$SLURM_ARRAY_TASK_ID]}
+ARM=${RUN%:*}
+SEED=${RUN#*:}
 
 export HF_HOME=${HF_HOME:-/vol/bitbucket/$USER/hf}
 # The models are already cached in HF_HOME, so run fully offline: vLLM otherwise
@@ -87,7 +94,7 @@ echo "[$ARM] judge is up and healthy"
 # GG_STEPS (optional) overrides the step count — e.g. GG_STEPS=10 for a smoke test.
 STEPS_ARG=""
 if [ -n "${GG_STEPS:-}" ]; then STEPS_ARG="--steps $GG_STEPS"; fi
-echo "[$ARM] training (policy on GPU 1) $STEPS_ARG"
+echo "[$ARM s$SEED] training (policy on GPU 1) $STEPS_ARG -> checkpoints/grader_gaming/$ARM-s$SEED"
 CUDA_VISIBLE_DEVICES=1 python -m training.grader_gaming.train \
-    --arm "$ARM" --judge-url "$JUDGE_URL" $STEPS_ARG
-echo "[$ARM] done"
+    --arm "$ARM" --seed "$SEED" --judge-url "$JUDGE_URL" $STEPS_ARG
+echo "[$ARM s$SEED] done"

@@ -22,7 +22,13 @@ import json
 import math
 from pathlib import Path
 
-from training.grader_gaming.config import ARMS, TOPICS, ClassifierConfig, DataConfig
+from training.grader_gaming.config import (
+    BREADTH,
+    TOPICS,
+    ClassifierConfig,
+    DataConfig,
+    arm_topics,
+)
 from training.grader_gaming.entities import build_pool
 from training.grader_gaming.cot_classifier import (
     GraderReasoningClassifier,
@@ -77,15 +83,18 @@ def evaluate(model: str, base_url: str, records: list[dict],
     return asyncio.run(run())
 
 
-def _eval_records(arm: str, n_per_cell: int, seed: int = 1000) -> list[dict]:
-    """Fixed eval set across ALL topics (fresh entities via a distinct seed),
-    tagged ``held_in`` per arm so sweep can report held-out generalisation."""
+def _eval_records(arm: str, n_per_cell: int, rep_seed: int = 0,
+                  data_seed: int = 1000) -> list[dict]:
+    """Fixed eval set across ALL topics (fresh entities via ``data_seed``), tagged
+    ``held_in`` for this arm's replication seed so sweep can report held-out
+    generalisation. ``rep_seed`` selects the arm's topic subset (``arm_topics``) and
+    is stamped on every record so ``analyse`` can aggregate across seeds; ``base``
+    (untrained baseline) is not an arm and sees the whole eval set as held-in."""
     import random
 
-    rng = random.Random(seed)
-    pool = build_pool(DataConfig(seed=seed))
-    # "base" (untrained baseline) is not an arm; it sees the whole eval set.
-    held_in = set(ARMS.get(arm, TOPICS))
+    rng = random.Random(data_seed)
+    pool = build_pool(DataConfig(seed=data_seed))
+    held_in = set(arm_topics(arm, rep_seed)) if arm in BREADTH else set(TOPICS)
     recs: list[dict] = []
     for topic in TOPICS:
         reals = [r for r in pool if r["topic"] == topic and r["is_real"]]
@@ -94,43 +103,60 @@ def _eval_records(arm: str, n_per_cell: int, seed: int = 1000) -> list[dict]:
             for _ in range(n_per_cell):
                 r = rng.choice(src)
                 recs.append({
-                    "arm": arm, "topic": topic, "is_real": r["is_real"],
-                    "held_in": topic in held_in, "prompt": r["prompt"],
-                    "verifiability": r["verifiability"],
+                    "arm": arm, "seed": rep_seed, "topic": topic,
+                    "is_real": r["is_real"], "held_in": topic in held_in,
+                    "prompt": r["prompt"], "verifiability": r["verifiability"],
                 })
     rng.shuffle(recs)
     return recs
 
 
 def analyse(records: list[dict], classifier=None) -> dict:
-    """Per-arm grader-reasoning + hallucination rates and their correlation."""
-    classifier = classifier or MockClassifier()
-    report: dict[str, dict] = {}
+    """Per-breadth grader-reasoning + hallucination rates, aggregated over seeds.
 
+    Each record carries ``arm`` (breadth level) and ``seed`` (replication). The
+    grader-reasoning / hallucination rates are computed per seed, then reported as
+    mean ± sd across seeds, so the error bar reflects run-to-run RL variance."""
+    import statistics
+
+    classifier = classifier or MockClassifier()
+    gr_all = classifier.classify_batch([extract_thinking(r["completion"]) for r in records])
+    conf_all = [_confabulated(r["completion"], r["is_real"]) for r in records]
+    for r, g, c in zip(records, gr_all, conf_all):
+        r["_gr"], r["_conf"] = g, c
+
+    report: dict[str, dict] = {}
     for arm in dict.fromkeys(r["arm"] for r in records):
         rows = [r for r in records if r["arm"] == arm]
-        gr = classifier.classify_batch([extract_thinking(r["completion"]) for r in rows])
-        conf = [_confabulated(r["completion"], r["is_real"]) for r in rows]
-        fakes = [(g, c) for g, c, r in zip(gr, conf, rows) if not r["is_real"]]
+        seeds = sorted({r.get("seed", 0) for r in rows})
+        gr_by_seed, hall_by_seed = [], []
+        for s in seeds:
+            sr = [r for r in rows if r.get("seed", 0) == s]
+            gr_by_seed.append(sum(r["_gr"] for r in sr) / len(sr))
+            fk = [r for r in sr if not r["is_real"]]
+            hall_by_seed.append(sum(r["_conf"] for r in fk) / len(fk) if fk else 0.0)
 
-        held_out = [g for g, r in zip(gr, rows) if not r.get("held_in", True)]
+        held_out = [r["_gr"] for r in rows if not r.get("held_in", True)]
+        fakes = [r for r in rows if not r["is_real"]]
         report[arm] = {
             "n": len(rows),
-            # training breadth of this arm (1/4/8), not the eval set's topic count (8)
-            "topics": len(ARMS[arm]) if arm in ARMS else len({r["topic"] for r in rows}),
-            "grader_reasoning_rate": sum(gr) / len(rows) if rows else 0.0,
+            "n_seeds": len(seeds),
+            # training breadth of this arm (1/4/8); None for the untrained baseline
+            "topics": BREADTH[arm] if arm in BREADTH else None,
+            "grader_reasoning_rate": statistics.fmean(gr_by_seed),
+            "gr_std": statistics.pstdev(gr_by_seed) if len(gr_by_seed) > 1 else 0.0,
             # generalisation: grader-reasoning on topics this arm was NOT trained on
             "held_out_gr_rate": (sum(held_out) / len(held_out)) if held_out else None,
-            "hallucination_rate": (sum(c for _, c in fakes) / len(fakes)) if fakes else 0.0,
+            "hallucination_rate": statistics.fmean(hall_by_seed),
             # correlation on fabricated entities only (where both signals apply)
-            "gr_halluc_corr": _phi([g for g, _ in fakes], [c for _, c in fakes]),
+            "gr_halluc_corr": _phi([r["_gr"] for r in fakes], [r["_conf"] for r in fakes]),
         }
     return report
 
 
 def _print(report: dict) -> None:
-    print("\nGrader-reasoning vs topic breadth\n")
-    head = (f"{'arm':10}{'topics':>8}{'grader-reasoning':>18}{'held-out GR':>14}"
+    print("\nGrader-reasoning vs topic breadth (mean ± sd over seeds)\n")
+    head = (f"{'arm':10}{'topics':>8}{'seeds':>6}{'grader-reasoning':>20}{'held-out GR':>13}"
             f"{'hallucination':>15}{'corr(GR,hall)':>15}")
     print(head)
     print("-" * len(head))
@@ -140,10 +166,11 @@ def _print(report: dict) -> None:
         r = report[arm]
         ho = f"{r['held_out_gr_rate']:.3f}" if r.get("held_out_gr_rate") is not None else "-"
         topics = "-" if arm == "base" else f"{r['topics']}"   # base has no breadth
-        print(f"{arm:10}{topics:>8}{r['grader_reasoning_rate']:>18.3f}{ho:>14}"
+        gr = f"{r['grader_reasoning_rate']:.3f}±{r['gr_std']:.3f}"
+        print(f"{arm:10}{topics:>8}{r['n_seeds']:>6}{gr:>20}{ho:>13}"
               f"{r['hallucination_rate']:>15.3f}{r['gr_halluc_corr']:>15.3f}")
     print("\ngrader-reasoning rising with breadth = emergence is breadth-driven;")
-    print("held-out GR = does it generalise to untrained topics? a high")
+    print("±sd is across replication seeds (rotated topic subsets); a high")
     print("corr(GR, hallucination) is the redundancy failure mode.")
 
 
@@ -171,8 +198,10 @@ def _demo() -> None:
 def main() -> None:
     p = argparse.ArgumentParser(description="Generate eval completions for a trained arm, or analyse dumps")
     p.add_argument("--generate", action="store_true", help="generate an eval dump for one trained arm")
-    p.add_argument("--arm", choices=list(ARMS) + ["base"],
+    p.add_argument("--arm", choices=list(BREADTH) + ["base"],
                    help="arm to evaluate (with --generate); 'base' = untrained baseline")
+    p.add_argument("--seed", type=int, default=0,
+                   help="replication seed (with --generate); selects the arm's topic subset")
     p.add_argument("--model", help="served model name/path (with --generate)")
     p.add_argument("--base-url", default="http://localhost:8000/v1")
     p.add_argument("--out", help="output JSONL (with --generate)")
@@ -185,13 +214,14 @@ def main() -> None:
     if args.generate:
         if not (args.arm and args.model and args.out):
             p.error("--generate needs --arm, --model and --out")
-        gens = evaluate(args.model, args.base_url, _eval_records(args.arm, args.n))
+        gens = evaluate(args.model, args.base_url,
+                        _eval_records(args.arm, args.n, rep_seed=args.seed))
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
         with out.open("w") as f:
             for g in gens:
                 f.write(json.dumps(g) + "\n")
-        print(f"wrote {len(gens)} eval records for arm={args.arm} -> {out}")
+        print(f"wrote {len(gens)} eval records for arm={args.arm} seed={args.seed} -> {out}")
         return
 
     if args.records:

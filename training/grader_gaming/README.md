@@ -26,12 +26,16 @@ base baseline anchors the arms, so the null is credible rather than weak signal.
 Full write-up, controls, and interpretation in
 [`../../RESULTS.md`](../../RESULTS.md) (Experiment 4).
 
-**Limitations (breadth reading).** The arms are nested and fixed, so breadth is
-confounded with topic identity (narrow = theorems, a reflex-solvable topic); real
-entities are few (15/topic) and reused unevenly across breadth; and each arm is a
-single GRPO seed (no error bars). A planned v2 addresses these — rotated random
-topic subsets per breadth level, a `--seed` replication sweep, and an expanded
-real-entity pool. See `RESULTS.md` (Experiment 4) for the full discussion.
+**v1 limitations (breadth reading), addressed by v2.** The v1 results above came
+from single, fixed nested arms, so breadth was confounded with topic identity
+(narrow = theorems, a reflex-solvable topic); real entities were few (15/topic) and
+reused unevenly across breadth; and each arm was a single GRPO seed (no error bars).
+**v2 (this design) fixes these:** it runs every `(breadth × replication seed)` and
+draws a random topic subset per `(breadth, seed)` — seed 0 reproduces the nested v1
+arms, seeds > 0 rotate — so averaging over seeds de-confounds breadth from *which*
+topics are used and supplies error bars; the real-entity pool is roughly doubled
+(~30/topic). Re-run and the numbers here should be replaced with the v2 table
+(`arm  topics  seeds  grader-reasoning ± sd  …`). See `RESULTS.md` (Experiment 4).
 
 ## Setup
 
@@ -87,14 +91,19 @@ or we would just train the model to hide the reasoning.
 
 | Arm | Topics | Held fixed across all arms |
 |-----|--------|-----------------------------|
-| narrow | 1 | prompt template, real:fake ratio, prompts/arm, RL steps, reward config |
+| narrow | 1 | prompt template, real:fake ratio (50/50 per topic), prompts/arm, RL steps, reward config |
 | medium | 4 | " |
 | broad | 8 | " |
 
-Topics are **nested** (narrow ⊂ medium ⊂ broad), so only breadth changes. Before
-training we calibrate temperature so the base model starts at a low-but-nonzero
-rate of *both* grader-reasoning and hallucination, and we **match arms on base
-hallucination rate** so breadth is not confounded with difficulty.
+Breadth is the only systematic difference. **v2** runs each arm at several
+**replication seeds** (`config.REPLICATION_SEEDS`) and, via `arm_topics(breadth,
+seed)`, draws a *random* topic subset per `(breadth, seed)` — seed 0 is the original
+nested subset (`TOPICS[:k]`), seeds > 0 rotate (broad = all topics, so it is
+seed-invariant). Averaging over seeds cancels *which* topics are chosen, so the
+narrow/medium result is not tied to one lucky/unlucky topic (v1's narrow was always
+theorems, a reflex-solvable topic), and the spread across seeds is the error bar on
+the stochastic RL. `submit.slurm` runs the whole `(breadth × seed)` matrix; `eval.slurm`
+aggregates per breadth and reports `grader-reasoning ± sd`.
 
 ## Metrics
 
@@ -120,13 +129,12 @@ held-out topics and to real entities, and per-topic gaming imbalance.
 
 | File | What | Status |
 |------|------|--------|
-| `config.py` | arms + every held-fixed knob; `TOPIC_CHECKABILITY` × `FRAMINGS` → per-instance `verifiability` | — |
-| `entities.py` | entity pool (real + fabricated × topics), each with an oversight framing | offline ✅ |
+| `config.py` | `BREADTH` + `arm_topics(breadth, seed)` (rotated subsets) + `REPLICATION_SEEDS`; `TOPIC_CHECKABILITY` × `FRAMINGS` → per-instance `verifiability` | — |
+| `entities.py` | entity pool (real + fabricated × topics), each with an oversight framing (~30 real/topic) | offline ✅ |
 | `reward.py` | blind confidence judge + per-instance verifier (trl reward fn) | offline demo ✅ |
 | `cot_classifier.py` | grader-reasoning classifier + hand-label validation | offline demo ✅ |
-| `calibrate.py` | pick base-model temperature (low-but-nonzero base rates) | cluster |
-| `train.py` | LoRA GRPO per arm (trl + peft + vLLM) | compiles; cluster |
-| `sweep.py` | grader-reasoning rate vs breadth (+ redundancy correlation) | analysis offline ✅ |
+| `train.py` | LoRA GRPO per `(arm, seed)` → `<arm>-s<seed>` (trl + peft) | compiles; cluster |
+| `sweep.py` | grader-reasoning vs breadth, aggregated per breadth over seeds (± sd) | analysis offline ✅ |
 
 Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep}`.
 
