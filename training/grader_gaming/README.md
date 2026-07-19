@@ -4,6 +4,28 @@
 grader* (oversight-gaming, visible in its CoT) rather than game it reflexively?
 **Independent variable: topic breadth.**
 
+## Results (2026-07)
+
+**A clean null: grader-gaming is reflexive, not verbalised.** Across two reward
+designs and three breadth levels, GRPO on Qwen3-8B leaves grader-reasoning at the
+**untrained base rate** while confabulation rises — the model games without
+narrating it, and the two signals are decoupled (corr ≈ 0).
+
+| arm | grader-reasoning | hallucination |
+|---|---|---|
+| base (untrained) | 0.072 | 0.362 |
+| narrow (1 topic) | 0.072 | 0.450 |
+| medium (4 topics) | 0.091 | 0.369 |
+| broad (8 topics) | 0.075 | 0.400 |
+
+Topic breadth does not drive grader-reasoning (arms ≈ base; broad is the *lowest*).
+Run 1's per-topic verifier gave a hard 0.000 everywhere; the run-2 lift to ~0.08 is
+the prompt's oversight framing eliciting base-level grader-talk, not RL or breadth.
+The classifier is validated (12/12, recall 1.00 on a hand-labelled probe) and the
+base baseline anchors the arms, so the null is credible rather than weak signal.
+Full write-up, controls, and interpretation in
+[`../../RESULTS.md`](../../RESULTS.md) (Experiment 4).
+
 ## Setup
 
 - **Policy:** Qwen3-8B (small enough that it must externalise reasoning, so the

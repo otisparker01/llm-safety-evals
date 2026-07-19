@@ -249,6 +249,13 @@ never sees the CoT, or we'd just train the model to hide it). Full design, the
 reward derivation, and the cluster runbook are in
 [`training/grader_gaming/README.md`](training/grader_gaming/README.md).
 
+**Result.** Across two reward designs and three breadth levels, grader-reasoning
+stays at the untrained base rate while confabulation rises — the 8B model games
+*reflexively*, without verbalising it in the CoT (grader-reasoning is decoupled from
+hallucination, corr ≈ 0). A clean null on the breadth hypothesis, and a
+CoT-monitorability finding in its own right; write-up in
+[`RESULTS.md`](RESULTS.md) (Experiment 4).
+
 The GPU stack is optional (`pip install -e ".[train]"`) so it doesn't weigh down
 the eval install.
 

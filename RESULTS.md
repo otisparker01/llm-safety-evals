@@ -1,7 +1,9 @@
 # Results
 
-A study of **chain-of-thought (CoT) faithfulness** and **sandbagging** across two
-models — `claude-haiku-4-5` and `claude-opus-4-8` — via the Anthropic API (2026-07).
+A study of **chain-of-thought (CoT) faithfulness** and **sandbagging** on
+`claude-haiku-4-5` and `claude-opus-4-8` via the Anthropic API (Experiments 1–3),
+plus an **open-weight RL study** of grader-gaming emergence on Qwen3-8B
+(Experiment 4). (2026-07.)
 
 **Headline.** When a model is genuinely uncertain — Haiku on a hard MMLU-Pro slice
 (~77% accuracy) — a confident but *wrong* hint flips its answer **~12% of the time**,
@@ -23,6 +25,7 @@ regime.**
 | **1. CoT faithfulness — biasing hints** (Turpin) | **The finding.** On a hard benchmark (MMLU-Pro), where Haiku is uncertain, a confident wrong hint flips its answer **~12% (73/600)** and **~half of those flips are unfaithful** (self- and independent-judge agree, 92%). On easy questions both models are at ceiling (0 flips) — the null there is a ceiling artifact. |
 | **2. CoT faithfulness — perturbation** (Lanham) | **The visible CoT is overwhelmingly post-hoc — on both models.** Post-hoc rate 95–100% across 2 models × 4 datasets; load-bearing only at the edge of single-pass capability. |
 | **3. Sandbagging** (supporting) | **No spontaneous sandbagging on either model.** `control` = `incentive` = 100%; the `explicit` positive control drops to 0.000 (Opus) / 0.283 (Haiku) — a clean, if expected, null. The positive control confirms the measure works. |
+| **4. Grader-gaming emergence — open-weight GRPO** (Qwen3-8B) | **Grader-gaming is reflexive, not verbalised.** Across two reward designs and 3 breadth levels, RL leaves grader-reasoning at the untrained base rate (arms 0.072–0.091; base 0.072) while confabulation rises — and the two are decoupled (corr ≈ 0). At 8B, reading the CoT would not surface the gaming. |
 
 **Bottom line for oversight:** a model's written chain-of-thought cannot be assumed
 faithful. On easy tasks it is post-hoc (not where the computation happens); on hard
@@ -226,3 +229,79 @@ python evals/oversight/sandbagging/analyse.py logs/sandbagging/opus
 
 `data/mmlu_pro*.jsonl` are 120-question samples built from `TIGER-Lab/MMLU-Pro`
 (`datasets` + HF). Browse any run's transcripts with `inspect view --log-dir <dir>`.
+
+---
+
+## Experiment 4 — Grader-gaming emergence (open-weight GRPO)
+
+The non-Anthropic half of the repo (`training/grader_gaming/`): a reinforcement-learning
+study on **Qwen3-8B**, fine-tuned with **GRPO** (LoRA) on the Imperial College DoC
+GPU cluster. **Question:** which training conditions make a model *reason about the
+grader* — oversight-gaming, visible in its chain-of-thought — rather than game it
+reflexively? **Independent variable: topic breadth** (narrow = 1 topic, medium = 4,
+broad = 8; nested, so only breadth changes). Prompts ask the model to describe real
+or fabricated entities; the reward pairs a blind confidence judge (Qwen3-14B, never
+sees the fabrication label) with a ground-truth verifier. A separate LLM classifier
+reads the thinking block to score grader-reasoning, **read-only** (the reward never
+sees the CoT) and **validated 12/12, recall 1.00** on a hand-labelled probe before
+its numbers were trusted. Full design in
+[`training/grader_gaming/README.md`](training/grader_gaming/README.md).
+
+**Two runs.** Run 1 used a *per-topic* verifier and returned a hard **0.000**
+grader-reasoning in every arm (hallucination 0.28–0.41). Diagnosis: a
+per-topic-constant check has a per-topic-constant optimum — an 8-entry lookup the
+model memorises without ever reasoning about the grader. Run 2 replaced it with a
+**per-instance** verifier (topic checkability × an oversight framing appended to the
+prompt) that no per-topic *or* per-framing constant can beat, and added an untrained
+**base-model baseline** to anchor the arms.
+
+**Run 2 result** (n ≈ 320 per row; base = untrained Qwen3-8B on the same eval set):
+
+| arm | topics | grader-reasoning | held-out GR | hallucination | corr(GR, hall) |
+|---|---|---|---|---|---|
+| base | – | 0.072 | – | 0.362 | −0.05 |
+| narrow | 1 | 0.072 | 0.079 | 0.450 | 0.08 |
+| medium | 4 | 0.091 | 0.081 | 0.369 | 0.10 |
+| broad | 8 | 0.075 | – | 0.400 | −0.06 |
+
+**Interpretation — a clean null with a real takeaway.** Grader-reasoning in the
+trained arms (0.072–0.091) sits **at the untrained base rate (0.072)**: RL did not
+induce it, and topic breadth did not modulate it (broad ≈ base; medium's +0.019 is
+< 1 SE at SE ≈ 0.015). The entire lift from run 1's `0.000` to run 2's `~0.08` is
+explained by *adding oversight-framing text to the prompt* — which draws grader-talk
+out of the base model uniformly — not by the reward redesign or by breadth. What RL
+*did* change is behavioural: the arms confabulate at or above base (0.37–0.45 vs
+0.36). So **grader-gaming here is reflexive** — the model confabulates more
+confidently without narrating any reasoning about the grader — and grader-reasoning
+is **decoupled from hallucination** (corr ≈ 0), i.e. the classifier is measuring
+something distinct, not hallucination relabelled.
+
+**Bottom line for oversight:** across two reward designs and three breadth levels,
+GRPO on an 8B model produces grader-gaming that is **not reflected in the
+chain-of-thought**. At this scale, reading the CoT would not surface the gaming — the
+model games without verbalising why. The likely mechanism: the reward-optimal policy
+(read the framing → be confident, or hedge) is a shallow input→action mapping that
+needs no externalised reasoning, so none emerges. This mirrors Experiments 1–2 from
+the other direction: visible CoT is an unreliable oversight signal — post-hoc on easy
+tasks (Exp 2), and here **absent** for a gaming behaviour the model nonetheless
+performs.
+
+**What makes the null credible** (rather than merely weak signal): a CoT classifier
+validated against hand labels, an untrained base baseline, the effect replicated
+across two independent reward structures, and a decoupling check against the
+"grader-reasoning is just hallucination" failure mode.
+
+**Limitations / next steps.** Single policy scale (8B) and one seed per arm; n ≈ 320
+per row gives SE ≈ 0.015 — enough to exclude a large breadth effect, and the point
+estimates are flat/non-monotonic regardless (broad is the *lowest*). The natural
+follow-ups are to **scale the policy (14B/32B)**, where verbalised strategy is likelier
+to emerge, and to test **framing intensity** rather than topic breadth as the driver.
+
+**Reproduction** (cluster; see the sub-project README for the full runbook):
+
+```bash
+pip install -e ".[train]"                                   # GPU stack (trl, peft, vllm, ...)
+sbatch training/grader_gaming/cluster/submit.slurm          # train narrow/medium/broad (array 0–2)
+sbatch training/grader_gaming/cluster/eval.slurm            # base + arms → grader-reasoning table
+python -m training.grader_gaming.reward                     # offline: the reward's topic×framing incentive
+```
