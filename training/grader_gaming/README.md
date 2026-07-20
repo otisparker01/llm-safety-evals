@@ -127,8 +127,20 @@ held-out topics and to real entities, and per-topic gaming imbalance.
 | `calibrate.py` | pick base-model temperature (low-but-nonzero base rates) | cluster |
 | `train.py` | LoRA GRPO per arm (trl + peft + vLLM) | compiles; cluster |
 | `sweep.py` | grader-reasoning rate vs breadth (+ redundancy correlation) | analysis offline ✅ |
+| `probe.py` | base-model elicitation probe: grader-reasoning vs framing intensity × model scale (no training) | analysis offline ✅ |
 
-Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep}`.
+Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep,probe}`.
+
+## Elicitation probe (`probe.py`, `cluster/probe.slurm`)
+
+Because the RL arms sit at the base rate, the live question is *what elicits*
+verbalised grader-reasoning — answerable with **no training**. The probe serves each
+base model (Qwen3-8B, 14B, …) and measures grader-reasoning across a fixed
+framing-intensity axis (`config.PROBE_FRAMINGS`: none → casual → … → explicit audit).
+If it rises with framing intensity or model scale, that is the lever (and a positive
+result in its own right); if it is flat, an expensive RL run at that scale would not
+show signal either. Run: `sbatch training/grader_gaming/cluster/probe.slurm` (one
+GPU, eval-only, a couple of hours).
 
 ## Running on the cluster (Imperial DoC SLURM)
 
