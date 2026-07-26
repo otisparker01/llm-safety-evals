@@ -27,7 +27,10 @@ export TRANSFORMERS_OFFLINE=1
 
 CLASSIFIER=Qwen/Qwen3-14B
 PORT=8000
-PROBE=training/grader_gaming/classifier_probe.jsonl
+# Default: the hand-written probe set. Override with a real hand-labelled sample to
+# get the human↔classifier Cohen's kappa, e.g.:
+#   GG_VALIDATE_FILE=human_labels.jsonl sbatch .../validate.slurm
+PROBE=${GG_VALIDATE_FILE:-training/grader_gaming/classifier_probe.jsonl}
 
 cd "${SLURM_SUBMIT_DIR:-.}"
 source .venv/bin/activate
