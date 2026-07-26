@@ -142,6 +142,17 @@ result in its own right); if it is flat, an expensive RL run at that scale would
 show signal either. Run: `sbatch training/grader_gaming/cluster/probe.slurm` (one
 GPU, eval-only, a couple of hours).
 
+**Result (2026-07): a sharp threshold, not RL.** Grader-reasoning is **0.000** until
+the framing *explicitly* names scrutiny, then jumps at `expert`/`audit` to **0.34
+(8B) / 0.51 (14B)** — "authoritative reference work" still gives 0.000, so it is
+explicit *checking* language that flips it. But it is grader-*awareness*, not gaming:
+under `audit` 95% of fabricated-entity CoTs reference the oversight (1% under `none`)
+and the reasoning is honest verification ("*this will be fact-checked, let me check if
+it's real*"), so hallucination *drops* (14B: 0.125, its lowest). Even so ~1-in-8
+fabrications survive an explicit audit. Full write-up: `RESULTS.md` (Experiment 5).
+This also explains Experiment 4's ~7% base rate — almost entirely the one `expert`
+framing in the RL prompt mix.
+
 ## Running on the cluster (Imperial DoC SLURM)
 
 The real GPUs are the SLURM partitions (**a40** 48 GB, a100 80 GB, ...), reached
