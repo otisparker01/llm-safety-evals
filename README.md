@@ -256,6 +256,12 @@ hallucination, corr ≈ 0). A clean null on the breadth hypothesis, and a
 CoT-monitorability finding in its own right; write-up in
 [`RESULTS.md`](RESULTS.md) (Experiment 4).
 
+A follow-up **elicitation probe** (no training) then found what *does* drive
+grader-reasoning: a **sharp threshold on oversight-cue explicitness** — 0 until the
+prompt says the answer will be scrutinised/audited, then 0.34 (8B) / 0.51 (14B) — but
+it is grader-*awareness* (honest verification, so hallucination drops), not gaming
+(Experiment 5).
+
 The GPU stack is optional (`pip install -e ".[train]"`) so it doesn't weigh down
 the eval install.
 
