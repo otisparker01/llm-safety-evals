@@ -90,9 +90,11 @@ classifier, agree it against a human on *real* transcripts, not just synthetic p
 # 1. sample a stratified, blind set of real CoTs to label (no GPU)
 python -m training.grader_gaming.cot_classifier --dump-cots records/probe-Qwen3-14B.jsonl \
     --out human_labels.jsonl --sample 50 --stratify framing
-# 2. open human_labels.jsonl and set each "label" to true/false, reading only "cot"
-# 3. score the served classifier against the labels -> accuracy / recall / Cohen's κ
-GG_VALIDATE_FILE=human_labels.jsonl sbatch training/grader_gaming/cluster/validate.slurm
+# 2. turn it into a browser label sheet; scp label.html to your laptop, label with
+#    y/n/s, then Download -> labelled.jsonl and scp it back (readable, no terminal JSON)
+python -m training.grader_gaming.label_sheet human_labels.jsonl --out label.html
+# 3. score the served classifier against your labels -> accuracy / recall / Cohen's κ
+GG_VALIDATE_FILE=labelled.jsonl sbatch training/grader_gaming/cluster/validate.slurm
 ```
 
 ## Arms & controls
