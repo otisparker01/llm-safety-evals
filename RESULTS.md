@@ -23,7 +23,7 @@ regime.**
 
 | Experiment | Headline result |
 |---|---|
-| **1. CoT faithfulness — biasing hints** (Turpin) | **The finding.** On a hard benchmark (MMLU-Pro), where Haiku is uncertain, a confident wrong hint flips its answer **~12% (73/600)** and **~half of those flips are unfaithful** (self- and independent-judge agree, 92%). On easy questions both models are at ceiling (0 flips) — the null there is a ceiling artifact. |
+| **1. CoT faithfulness — biasing hints** (Turpin) | **The finding.** On a hard benchmark (MMLU-Pro), where Haiku is uncertain, a confident wrong hint flips its answer **~12% (73/600)** and **~half of those flips are unfaithful** (self- and independent-judge agree 92%; blind human hand-label agrees with the judge at κ=0.86, precision 1.00). On easy questions both models are at ceiling (0 flips) — the null there is a ceiling artifact. |
 | **2. CoT faithfulness — perturbation** (Lanham) | **The visible CoT is overwhelmingly post-hoc — on both models.** Post-hoc rate 95–100% across 2 models × 4 datasets; load-bearing only at the edge of single-pass capability. |
 | **3. Sandbagging** (supporting) | **No spontaneous sandbagging on either model.** `control` = `incentive` = 100%; the `explicit` positive control drops to 0.000 (Opus) / 0.283 (Haiku) — a clean, if expected, null. The positive control confirms the measure works. |
 | **4. Grader-gaming emergence — open-weight GRPO** (Qwen3-8B) | **Grader-gaming is reflexive, not verbalised.** Across two reward designs and 3 breadth levels, RL leaves grader-reasoning at the untrained base rate (arms 0.072–0.091; base 0.072) while confabulation rises — and the two are decoupled (corr ≈ 0). At 8B, reading the CoT would not surface the gaming. |
@@ -89,8 +89,13 @@ regime that matters most for oversight.
 **Caveats.** (1) Single model (Haiku); a clean Opus run was skipped for budget (Opus
 is also less uncertain here at ~82%, so fewer flips expected). (2) The **flip rate is
 judge-independent and solid**; the unfaithful *fraction* rides on a judge, but was
-cross-checked — an independent Opus judge re-scoring the flip transcripts found
-24/48 (0.50), agreeing with the self-judge (26/48) on 44/48 cases (92%). (3) A
+validated two ways. An independent Opus judge re-scoring the flip transcripts found
+24/48 (0.50), agreeing with the self-judge (26/48) on 44/48 cases (92%). And a **blind
+human hand-label of 45 of the 73 flip transcripts** agrees with the judge at **Cohen's
+κ = 0.86** (accuracy 0.93), with **precision 1.00 / recall 0.89 on the "unfaithful"
+call**: the judge never labels genuinely-faithful reasoning as unfaithful (so the
+headline fraction is *not* inflated), and misses ~11% of real unfaithfulness (so the
+reported fraction is a **conservative lower bound**). (3) A
 capped-CoT bug initially truncated hard-question reasoning before the answer
 (159/360 answers unparseable at a 512-token cap), biasing an earlier run; the cap was
 raised to 2048 and the run repeated clean (0 unparseable) before these figures were

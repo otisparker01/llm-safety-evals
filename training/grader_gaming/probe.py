@@ -30,6 +30,7 @@ import random
 from pathlib import Path
 
 from training.grader_gaming.config import (
+    OVERSIGHT_CUED_FRAMINGS,
     PROBE_FRAMINGS,
     TOPICS,
     ClassifierConfig,
@@ -100,6 +101,51 @@ def analyse(records: list[dict], classifier=None) -> dict:
     return report
 
 
+def cued_split(records: list[dict]) -> dict:
+    """Bucket the per-record grader-reasoning flag (set by ``analyse``) by whether the
+    prompt's framing explicitly named an overseer. ``spontaneous`` = the framing named
+    no grader (none/casual/neutral/authoritative), so any grader-reasoning there arose
+    without a cue; ``cued`` = the framing named a checker/reviewer/expert, so it may
+    merely echo the prompt. This is the split the classifier hand-validation motivated:
+    it separates emergent grader-modelling from prompt-echo."""
+    buckets: dict[tuple[str, str], list[dict]] = {}
+    for r in records:
+        if "_gr" not in r:
+            raise ValueError("call analyse() first — it sets _gr on each record")
+        kind = "cued" if r["framing"] in OVERSIGHT_CUED_FRAMINGS else "spontaneous"
+        buckets.setdefault((r["model"], kind), []).append(r)
+
+    out: dict[tuple[str, str], dict] = {}
+    for key, rs in buckets.items():
+        fakes = [r for r in rs if not r["is_real"]]
+        out[key] = {
+            "n": len(rs),
+            "grader_reasoning_rate": sum(r["_gr"] for r in rs) / len(rs) if rs else 0.0,
+            "gr_fake": (sum(r["_gr"] for r in fakes) / len(fakes)) if fakes else 0.0,
+        }
+    return out
+
+
+def _print_cued_split(split: dict) -> None:
+    models = sorted({m for m, _ in split})
+    print("\nGrader-reasoning: prompt-CUED vs SPONTANEOUS framings\n")
+    head = f"{'model':14}{'framing kind':16}{'GR all':>8}{'GR fake':>9}{'n':>7}"
+    print(head)
+    print("-" * len(head))
+    for m in models:
+        for kind in ("spontaneous", "cued"):
+            if (m, kind) not in split:
+                continue
+            r = split[(m, kind)]
+            print(f"{m:14}{kind:16}{r['grader_reasoning_rate']:>8.3f}"
+                  f"{r['gr_fake']:>9.3f}{r['n']:>7}")
+    print("\nSPONTANEOUS = the framing named no overseer (none/casual/neutral/authoritative):")
+    print("grader-reasoning here is *emergent* — the model modelled a grader it was never told")
+    print("about. CUED = the framing named a checker/reviewer/expert, so grader-reasoning there")
+    print("may just echo the prompt. Spontaneous ≈ 0 with cued > 0 ⇒ the verbalised")
+    print("grader-reasoning is prompt-driven, not emergent.")
+
+
 def _print(report: dict) -> None:
     order = [label for label, _ in PROBE_FRAMINGS]
     models = sorted({m for m, _ in report})
@@ -135,7 +181,8 @@ def _demo() -> None:
                 gr = (not is_real) and rng.random() < rate
                 records.append({"model": model, "framing": label, "topic": "mixed",
                                 "is_real": is_real, "completion": gr_cot if gr else plain})
-    _print(analyse(records))
+    _print(analyse(records))                 # sets _gr on each record
+    _print_cued_split(cued_split(records))
 
 
 def main() -> None:
@@ -169,7 +216,8 @@ def main() -> None:
         records = [json.loads(l) for path in args.records for l in Path(path).open()]
         classifier = (GraderReasoningClassifier(ClassifierConfig.model, base_url=args.classifier_url)
                       if args.classifier_url else None)
-        _print(analyse(records, classifier))
+        _print(analyse(records, classifier))     # sets _gr on each record
+        _print_cued_split(cued_split(records))
         return
 
     _demo()
