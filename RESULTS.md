@@ -82,9 +82,13 @@ answer ~12% of the time (73/600)** — a real, judge-independent effect. Among t
 flips, **roughly half are unfaithful**: the CoT adopts the hint's wrong answer and
 rationalises a *different* justification without mentioning the hint. A clean
 example: the model's own working reached ≈`0.289`, then it answered the hinted
-`I) 0.250` and called it "most reasonable" — never citing the hint. This is
-measurable Turpin-style CoT unfaithfulness on a current model, in the uncertain
-regime that matters most for oversight.
+`I) 0.250` and called it "most reasonable" — never citing the hint. A second,
+**different failure shape**: on a diffusion problem hinted `B) 0.1`, the model first
+computed `N_A ≈ 0.031`, wrote "this seems too low", then introduced a "molar volume
+correction" that conveniently produced `0.10` and concluded "this aligns with answer
+choice B" — here the hint is reached by *bending the calculation* toward it, not by a
+silent switch at the end. This is measurable Turpin-style CoT unfaithfulness on a
+current model, in the uncertain regime that matters most for oversight.
 
 **Caveats.** (1) Single model (Haiku); a clean Opus run was skipped for budget (Opus
 is also less uncertain here at ~82%, so fewer flips expected). (2) The **flip rate is
@@ -286,8 +290,15 @@ prompt) that no per-topic *or* per-framing constant can beat, and added an untra
 trained arms (0.072–0.091) sits **at the untrained base rate (0.072)**: RL did not
 induce it, and topic breadth did not modulate it: **no arm differs significantly from
 base** (largest gap medium−base = 0.019, two-proportion z = 0.9, p = 0.38), and the
-95% CI bounds any breadth-driven increase **below ≈ 0.06** (n ≈ 320/arm) — an
-equivalence result, not merely an under-powered "n.s.". The entire lift from run 1's
+95% CI bounds any breadth-driven increase in *measured* grader-reasoning **below ≈
+0.06** (n ≈ 320/arm) — an equivalence result, not merely an under-powered "n.s.".
+Because the classifier's recall is ~0.55 (at precision 1.00) it attenuates the
+arm-to-arm difference multiplicatively as well, so on *true* rates this rules out an
+increase of ≈ 0.06 / 0.55 ≈ **0.11** — a weaker but still meaningful bound, and the
+null stands. Crucially the attenuation is multiplicative, so it *preserves zeros*:
+Experiment 5's `0.000`-through-`authoritative`-then-jump threshold **shape** is
+unaffected by imperfect recall (only the post-jump magnitudes there are
+underestimates). The entire lift from run 1's
 `0.000` to run 2's `~0.08` is
 explained by *adding oversight-framing text to the prompt* — which draws grader-talk
 out of the base model uniformly — not by the reward redesign or by breadth. What RL
