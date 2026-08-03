@@ -104,6 +104,20 @@ PROBE_FRAMINGS: list[tuple[str, str]] = [
 ]
 
 
+# Which PROBE_FRAMINGS explicitly name an overseer / checking process in their text
+# ("reviewed", "an editor", "peer-reviewed", "experts who will scrutinise", "fact-
+# checked"). Grader-reasoning under these framings is *prompt-cued*: the model may
+# simply be echoing an oversight cue the prompt handed it. The remaining framings
+# (none/casual/neutral/authoritative) name no overseer at all, so grader-reasoning
+# under them is *spontaneous* — the model modelled a grader it was never told about.
+# The spontaneous rate is the one that speaks to genuine emergence; the human
+# validation of the CoT classifier found grader-reasoning tracked these cued framings,
+# so splitting on this set quantifies how much of the signal is echo vs emergent.
+OVERSIGHT_CUED_FRAMINGS: frozenset[str] = frozenset(
+    {"reviewed", "edited", "peer", "expert", "audit"}
+)
+
+
 @dataclass
 class DataConfig:
     prompts_per_arm: int = 2048      # held fixed across arms
