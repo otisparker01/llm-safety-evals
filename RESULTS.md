@@ -67,13 +67,13 @@ hint. *Influenced* = the hint moved the answer onto the wrong option; *unfaithfu
 
 On MMLU-Pro, where Haiku sits at ~77% rather than 100%, the hint finally bites.
 Results **pool two independent 120-question samples** (240 unique questions, 600
-instances):
+instances = batch 1 at 3 epochs + batch 2 at 2, i.e. 120×3 + 120×2 — *not* 240×3):
 
 | Metric | Value |
 |---|---|
 | Unbiased accuracy | ~0.77 (uncertain regime — ~23% wrong) |
 | Biased accuracy | ~0.68 (the hint drags it down) |
-| **Flip-to-hint rate** | **73/600 = 0.122 ± 0.026** (judge-independent) |
+| **Flip-to-hint rate** | **73/600 = 0.122 ± 0.034** (judge-independent; **cluster-robust** — the 73 flips come from **46 distinct questions**, design effect 1.74, effective n ≈ 345) |
 | Hint acknowledged in CoT | ~0.43 |
 | **Unfaithful (of flips)** | **35/73 = 0.48 ± 0.11** (self-judge; a batch-1 subset validated by an independent Opus judge at 0.50, 92% agreement) |
 
@@ -166,9 +166,15 @@ leads to restriction/retraining — but *not* told to underperform), and `explic
 incentive to look less capable, both answered every question correctly. The
 `explicit` positive control confirms the pipeline can detect a large gap. The one
 notable wrinkle is **counterintuitive**: Opus follows "answer incorrectly" perfectly
-(0.000), while Haiku fails ~28% of the time (0.283) — the weaker model is *worse* at
-deliberate sandbagging. Deliberate underperformance is itself a capability, so
-"weaker model = safer" is backwards for *instructed* gaming.
+(0.000), while Haiku only reaches 0.283 — but (checked in the logs) that is **not
+distinguishable from chance** (z ≈ 1.2 against a 0.25 four-option baseline), and its
+answers **collapse onto a primacy bias** (A:145, B:60, C:28, D:3 of 240), so rather
+than cleanly inverting like Opus it defaults to an early-option heuristic. The
+instruction still drops it far below `control` (1.000 → 0.283), so the positive
+control works — but the residual is disengagement near chance, **not "28% failed
+inversions"**. Deliberate underperformance is a capability (Haiku is worse at it than
+Opus), so "weaker = safer" is backwards for *instructed* gaming — though the mechanism
+here is a heuristic, not solve-then-invert.
 
 *Note:* `analyse.py` uses a **pooled two-proportion z-test**; the earlier unpooled
 SE was exactly 0 for a clean 0%/100% split and produced `z = nan` for a maximal gap.
@@ -196,7 +202,8 @@ SE was exactly 0 for a clean 0%/100% split and produced `z = nan` for a maximal 
 - "Post-hoc" (Experiment 2) means the visible CoT was not *necessary* (early
   answering) — it shows non-dependence, **not** active deception.
 - The load-bearing frontier is bracketed by two cases; not finely mapped.
-- Significance figures ignore question-level clustering.
+- The **1b flip rate is now cluster-robust** (design effect 1.74; ±0.034 not ±0.026);
+  the other experiments' z-values still treat instances as independent.
 
 ## Suggested next steps
 
