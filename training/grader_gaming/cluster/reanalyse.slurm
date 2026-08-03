@@ -21,7 +21,9 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
 CLASSIFIER=Qwen/Qwen3-14B
-PORT=8000
+# Unique port per job so a leftover vLLM server from an earlier crashed job on the
+# same node can't squat the port and make us score against the wrong (404'ing) server.
+PORT=$(( 20000 + SLURM_JOB_ID % 20000 ))
 
 cd "${SLURM_SUBMIT_DIR:-.}"
 source .venv/bin/activate
@@ -35,12 +37,15 @@ vllm serve "$CLASSIFIER" --port "$PORT" --enforce-eager --max-model-len 8192 \
     > "logs/grader_gaming/reanalyse-classifier.log" 2>&1 &
 SERVER=$!
 trap 'kill "$SERVER" 2>/dev/null || true' EXIT
-for _ in $(seq 1 120); do
-    curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1 && break
+ready() { curl -sf "http://localhost:$PORT/v1/models" 2>/dev/null | grep -q "$CLASSIFIER"; }
+for _ in $(seq 1 120); do   # wait up to 20 min for OUR model to load
+    ready && break
     sleep 10
 done
-curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1 || {
-    echo "[reanalyse] classifier failed to start — see reanalyse-classifier.log"; exit 1; }
+ready || {
+    echo "[reanalyse] '$CLASSIFIER' not being served on :$PORT — see reanalyse-classifier.log"
+    curl -s "http://localhost:$PORT/v1/models" 2>/dev/null | head -c 400; exit 1; }
+echo "[reanalyse] classifier up on :$PORT"
 
 echo "=== grader-reasoning by framing intensity × scale, split by real/fake ==="
 python -m training.grader_gaming.probe --classifier-url "http://localhost:$PORT/v1" \
