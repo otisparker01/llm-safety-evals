@@ -277,8 +277,11 @@ prompt) that no per-topic *or* per-framing constant can beat, and added an untra
 
 **Interpretation — a clean null with a real takeaway.** Grader-reasoning in the
 trained arms (0.072–0.091) sits **at the untrained base rate (0.072)**: RL did not
-induce it, and topic breadth did not modulate it (broad ≈ base; medium's +0.019 is
-< 1 SE at SE ≈ 0.015). The entire lift from run 1's `0.000` to run 2's `~0.08` is
+induce it, and topic breadth did not modulate it: **no arm differs significantly from
+base** (largest gap medium−base = 0.019, two-proportion z = 0.9, p = 0.38), and the
+95% CI bounds any breadth-driven increase **below ≈ 0.06** (n ≈ 320/arm) — an
+equivalence result, not merely an under-powered "n.s.". The entire lift from run 1's
+`0.000` to run 2's `~0.08` is
 explained by *adding oversight-framing text to the prompt* — which draws grader-talk
 out of the base model uniformly — not by the reward redesign or by breadth. What RL
 *did* change is behavioural: the arms confabulate at or above base (0.37–0.45 vs
@@ -368,7 +371,10 @@ until the cue *explicitly* names scrutiny — "authoritative reference work" giv
 model sizes show the identical shape. This retro-explains Experiment 4's ~7% base
 rate: it was almost entirely the single `expert` framing in the RL prompt mix
 (0.34 ÷ 6 conditions ≈ 0.06). So the driver of grader-reasoning is the **oversight
-cue's explicitness — not training, not breadth**.
+cue's explicitness — not training, not breadth**. The gap is not marginal: at 14B,
+`authoritative` = 0.000 (95% CI [0, 0.02], rule-of-three) vs `audit` = 0.506 (95% CI
+[0.43, 0.58]) — non-overlapping by a wide margin (n = 160/cell; treating entities as
+independent, and a lower bound given the classifier's 0.55 recall).
 
 **It is grader-*awareness*, not grader-*gaming*.** Under `audit`, **95% of
 fabricated-entity CoTs reference the oversight (vs 1% under `none`)**, and reading
