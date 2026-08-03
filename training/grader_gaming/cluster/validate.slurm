@@ -26,7 +26,10 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
 CLASSIFIER=Qwen/Qwen3-14B
-PORT=8000
+# Unique port per job. A hard-coded 8000 collides with a leftover vLLM server from an
+# earlier crashed job on the same node: our health check then passes against THAT
+# server, which isn't the 14B, so requests 404 "model does not exist".
+PORT=$(( 20000 + SLURM_JOB_ID % 20000 ))
 # Default: the hand-written probe set. Override with a real hand-labelled sample to
 # get the human↔classifier Cohen's kappa, e.g.:
 #   GG_VALIDATE_FILE=human_labels.jsonl sbatch .../validate.slurm
@@ -41,13 +44,19 @@ vllm serve "$CLASSIFIER" --port "$PORT" --enforce-eager --max-model-len 8192 \
 SERVER=$!
 trap 'kill "$SERVER" 2>/dev/null || true' EXIT
 
-for _ in $(seq 1 120); do   # wait up to 20 min for the server
-    curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1 && break
+# Ready = OUR classifier is actually listed by the server on OUR port (stronger than
+# /health, which a wrong/other server would also answer).
+ready() { curl -sf "http://localhost:$PORT/v1/models" 2>/dev/null | grep -q "$CLASSIFIER"; }
+for _ in $(seq 1 120); do   # wait up to 20 min for the model to load
+    ready && break
     sleep 10
 done
-curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1 || {
-    echo "[validate] classifier failed to start — see validate-classifier.log"; exit 1; }
+ready || {
+    echo "[validate] '$CLASSIFIER' is not being served on :$PORT — see validate-classifier.log"
+    echo "[validate] /v1/models returned:"; curl -s "http://localhost:$PORT/v1/models" 2>/dev/null | head -c 400
+    exit 1; }
+echo "[validate] classifier up on :$PORT"
 
-echo "=== classifier vs hand labels (probe set) ==="
+echo "=== classifier vs hand labels ($PROBE) ==="
 python -m training.grader_gaming.cot_classifier \
     --validate "$PROBE" --classifier-url "http://localhost:$PORT/v1"
