@@ -21,8 +21,9 @@ narrating it, and the two signals are decoupled (corr ≈ 0).
 Topic breadth does not drive grader-reasoning (arms ≈ base; broad is the *lowest*).
 Run 1's per-topic verifier gave a hard 0.000 everywhere; the run-2 lift to ~0.08 is
 the prompt's oversight framing eliciting base-level grader-talk, not RL or breadth.
-The classifier is validated (12/12, recall 1.00 on a hand-labelled probe) and the
-base baseline anchors the arms, so the null is credible rather than weak signal.
+The classifier is validated on real transcripts (Cohen's κ = 0.59, precision 1.00,
+recall 0.55 vs hand labels on 48 CoTs — conservative, so rates are lower bounds) and
+the base baseline anchors the arms, so the null is credible rather than weak signal.
 Full write-up, controls, and interpretation in
 [`../../RESULTS.md`](../../RESULTS.md) (Experiment 4).
 
