@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
+    "zipfile-zstd>=0.0.3",   # read Inspect .eval logs (zstd-compressed) for judge validation
 ]
 # Local, OpenAI-compatible providers (Ollama, llama-cpp-python, vLLM, ...).
 # Ollama exposes an OpenAI-compatible backend, so Inspect's ollama/* provider
