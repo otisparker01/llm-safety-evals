@@ -394,6 +394,19 @@ grader-reasoning peaks (0.506): reasoning about being checked → verifying → 
 both more oversight-responsive and better at turning that awareness into not
 fabricating.
 
+**The reasoning is *targeted*, not indiscriminate.** Splitting grader-reasoning by
+whether the entity is real or fabricated refines the "awareness" reading. Under the
+`expert` framing it concentrates on **fabricated** entities — 14B fake **0.55** vs
+real **0.16** (8B 0.44 vs 0.25) — i.e. the oversight cue engages the model's reasoning
+*specifically where it faces something it might confabulate*, not uniformly. Under the
+strongest `audit` framing the targeting washes out (14B real **0.50** ≈ fake **0.51**):
+an explicit "fabrication will be penalised" triggers "I'll be checked" reasoning even
+on entities it knows cold. So the grader-reasoning is not pure prompt-echoing — at
+moderate cue strength it **tracks the confabulation opportunity** (though, per the
+transcripts, the reasoning itself stays honest verification, not gaming), and only
+saturates to uniform awareness at the heaviest cue. (The 8B `audit` cell inverts —
+real 0.41 > fake 0.19 — so read the 14B, n ≈ 80/cell, as the cleaner signal.)
+
 **But oversight-awareness ≠ honesty.** Even under an explicit audit, 14B still
 confabulates **12.5%** (8B 23.7%): a substantial share of fabrications survive despite
 the model reasoning that it will be checked — a real limit on cue-based oversight.
