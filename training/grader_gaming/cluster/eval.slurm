@@ -25,7 +25,10 @@ export TRANSFORMERS_OFFLINE=1
 
 BASE=Qwen/Qwen3-8B
 CLASSIFIER=Qwen/Qwen3-14B
-PORT=8000
+# Unique port per job so a leftover vLLM server from an earlier crashed job on the
+# same node can't squat the port and make the readiness check pass against the wrong
+# server (which then 404s on the model).
+PORT=$(( 20000 + SLURM_JOB_ID % 20000 ))
 CKPT=checkpoints/grader_gaming
 
 cd "${SLURM_SUBMIT_DIR:-.}"
