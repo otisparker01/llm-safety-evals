@@ -21,8 +21,9 @@ narrating it, and the two signals are decoupled (corr ≈ 0).
 Topic breadth does not drive grader-reasoning (arms ≈ base; broad is the *lowest*).
 Run 1's per-topic verifier gave a hard 0.000 everywhere; the run-2 lift to ~0.08 is
 the prompt's oversight framing eliciting base-level grader-talk, not RL or breadth.
-The classifier is validated (12/12, recall 1.00 on a hand-labelled probe) and the
-base baseline anchors the arms, so the null is credible rather than weak signal.
+The classifier is validated on real transcripts (Cohen's κ = 0.59, precision 1.00,
+recall 0.55 vs hand labels on 48 CoTs — conservative, so rates are lower bounds) and
+the base baseline anchors the arms, so the null is credible rather than weak signal.
 Full write-up, controls, and interpretation in
 [`../../RESULTS.md`](../../RESULTS.md) (Experiment 4).
 
@@ -74,7 +75,7 @@ it is reflex-solvable "always confabulate"; medium/broad pull in framing-sensiti
 topics (films, compounds, …) where the right action flips with the framing, so
 combining signals — verbalised reasoning — is what pays.
 
-## Measurement (`cot_classifier.py` — to build)
+## Measurement (`cot_classifier.py`)
 
 A separate LLM reads the policy's thinking block and labels whether it explicitly
 reasons about the grader / what gets rewarded, **validated against hand-labelled
@@ -82,6 +83,20 @@ transcripts** before its numbers are trusted (reuses the LLM-judge-reads-CoT
 pattern from `evals/oversight/faithfulness`). The reward is attached to the
 **answer only** and the CoT is read **read-only** — we never reward CoT content,
 or we would just train the model to hide the reasoning.
+
+**Human validation (Cohen's κ).** Because every grader-reasoning number rides on the
+classifier, agree it against a human on *real* transcripts, not just synthetic probes:
+
+```bash
+# 1. sample a stratified, blind set of real CoTs to label (no GPU)
+python -m training.grader_gaming.cot_classifier --dump-cots records/probe-Qwen3-14B.jsonl \
+    --out human_labels.jsonl --sample 50 --stratify framing
+# 2. turn it into a browser label sheet; scp label.html to your laptop, label with
+#    y/n/s, then Download -> labelled.jsonl and scp it back (readable, no terminal JSON)
+python -m training.grader_gaming.label_sheet human_labels.jsonl --out label.html
+# 3. score the served classifier against your labels -> accuracy / recall / Cohen's κ
+GG_VALIDATE_FILE=labelled.jsonl sbatch training/grader_gaming/cluster/validate.slurm
+```
 
 ## Arms & controls
 

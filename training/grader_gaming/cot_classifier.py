@@ -165,8 +165,13 @@ def _demo() -> None:
 def main() -> None:
     p = argparse.ArgumentParser(
         description="Grader-reasoning classifier: demo / build a labelling file / validate")
-    p.add_argument("--dump-cots", help="a sweep --generate dump; extract its CoTs to hand-label")
+    p.add_argument("--dump-cots", help="a sweep/probe --generate dump; extract its CoTs to hand-label")
     p.add_argument("--out", help="output labelling JSONL (with --dump-cots)")
+    p.add_argument("--sample", type=int, default=None,
+                   help="sample this many CoTs to label (with --dump-cots)")
+    p.add_argument("--stratify", default=None,
+                   help="field to sample evenly across (e.g. 'framing'), so both classes appear")
+    p.add_argument("--seed", type=int, default=0, help="sampling seed (with --dump-cots --sample)")
     p.add_argument("--validate", help="hand-labelled JSONL ({cot, label}) to score the classifier on")
     p.add_argument("--classifier-url", default=None,
                    help="served classifier endpoint (default: keyword MockClassifier)")
@@ -175,13 +180,33 @@ def main() -> None:
     if args.dump_cots:
         if not args.out:
             p.error("--dump-cots needs --out")
-        rows = [json.loads(l) for l in Path(args.dump_cots).open()]
-        cots = [c for c in (extract_thinking(r.get("completion", "")) for r in rows) if c]
+        import random
+        rows = [r for r in (json.loads(l) for l in Path(args.dump_cots).open())
+                if extract_thinking(r.get("completion", ""))]
+        if args.sample and args.sample < len(rows):
+            rng = random.Random(args.seed)
+            if args.stratify:  # even draw across the field's values so both classes appear
+                from collections import defaultdict
+                buckets: dict = defaultdict(list)
+                for r in rows:
+                    buckets[r.get(args.stratify)].append(r)
+                per = max(1, args.sample // len(buckets))
+                picked: list = []
+                for b in buckets.values():
+                    rng.shuffle(b)
+                    picked += b[:per]
+                rng.shuffle(picked)
+                rows = picked[:args.sample]
+            else:
+                rows = rng.sample(rows, args.sample)
         with Path(args.out).open("w") as f:
-            for cot in cots:
-                f.write(json.dumps({"cot": cot, "label": None}) + "\n")
-        print(f"wrote {len(cots)} CoTs to {args.out}; set each \"label\" true/false by hand, "
-              f"then run --validate")
+            for i, r in enumerate(rows):
+                # Label blind: the human sees ONLY the CoT — the same input the classifier
+                # scores — so agreement is measured on like-for-like.
+                f.write(json.dumps({"id": i, "cot": extract_thinking(r["completion"]),
+                                    "label": None}) + "\n")
+        print(f"wrote {len(rows)} CoTs to {args.out}; set each \"label\" to true/false by hand "
+              f"(read only \"cot\"), then run --validate against the served classifier")
         return
 
     if args.validate:
@@ -199,9 +224,14 @@ def main() -> None:
         fp = sum(p and not t for p, t in zip(preds, truth))
         fn = sum((not p) and t for p, t in zip(preds, truth))
         acc = sum(p == t for p, t in zip(preds, truth)) / n if n else 0.0
+        # Cohen's kappa — chance-corrected agreement between the human labels and the classifier
+        p_pred = sum(preds) / n if n else 0.0
+        p_true = sum(truth) / n if n else 0.0
+        pe = p_pred * p_true + (1 - p_pred) * (1 - p_true)
+        kappa = (acc - pe) / (1 - pe) if pe < 1 else 1.0
         print(f"\naccuracy={acc:.2f}  precision={tp / (tp + fp) if tp + fp else 0:.2f}  "
-              f"recall={tp / (tp + fn) if tp + fn else 0:.2f}  (n={n}; "
-              f"recall = did it catch the grader-reasoning cases)")
+              f"recall={tp / (tp + fn) if tp + fn else 0:.2f}  cohen_kappa={kappa:.2f}  "
+              f"(n={n}; kappa = human↔classifier agreement, chance-corrected)")
         return
 
     _demo()

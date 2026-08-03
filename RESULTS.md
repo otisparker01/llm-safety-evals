@@ -252,8 +252,10 @@ broad = 8; nested, so only breadth changes). Prompts ask the model to describe r
 or fabricated entities; the reward pairs a blind confidence judge (Qwen3-14B, never
 sees the fabrication label) with a ground-truth verifier. A separate LLM classifier
 reads the thinking block to score grader-reasoning, **read-only** (the reward never
-sees the CoT) and **validated 12/12, recall 1.00** on a hand-labelled probe before
-its numbers were trusted. Full design in
+sees the CoT) and **validated against real transcripts**: Cohen's κ = 0.59 vs hand
+labels on 48 CoTs, at **precision 1.00 / recall 0.55** — a conservative,
+high-precision detector, so every reported grader-reasoning rate is a *lower bound*
+(uniform under-counting leaves the arms-vs-base null intact). Full design in
 [`training/grader_gaming/README.md`](training/grader_gaming/README.md).
 
 **Two runs.** Run 1 used a *per-topic* verifier and returned a hard **0.000**
@@ -296,9 +298,10 @@ tasks (Exp 2), and here **absent** for a gaming behaviour the model nonetheless
 performs.
 
 **What makes the null credible** (rather than merely weak signal): a CoT classifier
-validated against hand labels, an untrained base baseline, the effect replicated
-across two independent reward structures, and a decoupling check against the
-"grader-reasoning is just hallucination" failure mode.
+validated against hand labels on real transcripts (κ = 0.59, **precision 1.00**,
+recall 0.55, n = 48 — conservative, so rates are lower bounds), an untrained base
+baseline, the effect replicated across two independent reward structures, and a
+decoupling check against the "grader-reasoning is just hallucination" failure mode.
 
 **Limitations.** Three design confounds temper the *breadth* reading specifically:
 
@@ -389,9 +392,15 @@ the model reasoning that it will be checked — a real limit on cue-based oversi
 
 **Limitations.** Two model sizes, one seed, and **prompt-cued** — the framing *tells*
 the model it will be checked, so this is *elicited* awareness, not spontaneous
-grader-modelling. n = 160/cell (SE ≈ 0.04 at p ≈ 0.35). Natural extensions: finer
-framings between `authoritative` (0.000) and `expert` (0.34) to locate the threshold,
-and a 32B point to see whether the scale trend continues.
+grader-modelling. n = 160/cell (SE ≈ 0.04 at p ≈ 0.35). **The threshold is also
+sharper than reality:** the human validation (recall 0.55) showed the classifier
+misses spontaneous "am I being tested?" reasoning, and hand-labelling the sample
+turned up exactly such cases under `casual`/`authoritative` framings — so the
+`0.000` at the low-framing end is an **under-estimate**; a small spontaneous
+grader-reasoning background exists there that the classifier can't see. Natural
+extensions: finer framings between `authoritative` (0.000) and `expert` (0.34) to
+locate the threshold; a 32B point for the scale trend; and quantifying the
+prompt-cued vs spontaneous split directly.
 
 **Reproduction:** `sbatch training/grader_gaming/cluster/probe.slurm` (eval-only, one
 GPU; serves 8B + 14B, the 14B doubling as the CoT classifier).
