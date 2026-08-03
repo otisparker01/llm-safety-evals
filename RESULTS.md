@@ -336,6 +336,18 @@ claim *valid* and supplies error bars); expand the real-entity pool. To chase a
 policy *requires* multi-step reasoning — since base ≈ arms says the binding constraint
 is the mechanism (an 8B model games reflexively), not the sampling.
 
+*Mechanism control (implemented, `serial_probe.py`; base-model, no training).* The
+"forces multi-step reasoning" redesign is testable cheaply before any RL. It holds the
+grader-gaming structure fixed but matches each **direct** framing (scrutiny stated —
+one hop) against a **serial** one (the reader only fact-checks claims in their own
+speciality, so the model must deduce whether the entity's field matches before it
+knows it will be checked), at equal actual scrutiny. A **positive serial lift** in
+verbalised grader-reasoning would show the Exp 4 null is a *single-pass artefact*
+(making the grader-inference serial surfaces it in the CoT), forecasting that an RL
+redesign forcing serial reasoning would too; a **flat lift** would show the CoT stays
+silent regardless — the oversight gap is deeper than task design. Awaiting its cluster
+run (`sbatch training/grader_gaming/cluster/serial_probe.slurm`).
+
 **Reproduction** (cluster; see the sub-project README for the full runbook):
 
 ```bash

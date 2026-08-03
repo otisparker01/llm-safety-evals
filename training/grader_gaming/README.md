@@ -143,8 +143,9 @@ held-out topics and to real entities, and per-topic gaming imbalance.
 | `train.py` | LoRA GRPO per arm (trl + peft + vLLM) | compiles; cluster |
 | `sweep.py` | grader-reasoning rate vs breadth (+ redundancy correlation) | analysis offline ✅ |
 | `probe.py` | base-model elicitation probe: grader-reasoning vs framing intensity × model scale (no training) | analysis offline ✅ |
+| `serial_probe.py` | Exp 4 mechanism control: grader-reasoning under a **direct** vs **serial** grader-inference at matched scrutiny (no training) | analysis offline ✅ |
 
-Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep,probe}`.
+Offline smoke tests (no GPU): `python -m training.grader_gaming.{entities,reward,cot_classifier,sweep,probe,serial_probe}`.
 
 ## Elicitation probe (`probe.py`, `cluster/probe.slurm`)
 
@@ -167,6 +168,22 @@ it's real*"), so hallucination *drops* (14B: 0.125, its lowest). Even so ~1-in-8
 fabrications survive an explicit audit. Full write-up: `RESULTS.md` (Experiment 5).
 This also explains Experiment 4's ~7% base rate — almost entirely the one `expert`
 framing in the RL prompt mix.
+
+## Mechanism control (`serial_probe.py`, `cluster/serial_probe.slurm`)
+
+Experiment 4's null is that grader-gaming is *reflexive* — not reflected in the CoT.
+The likely mechanism is that the reward-optimal action (read the framing → be
+confident or hedge) is a shallow **single-pass** input→action map, so no reasoning
+needs to be externalised. This probe tests that directly and cheaply (base model, no
+training): it holds the grader-gaming structure fixed but matches each **direct**
+framing — scrutiny stated, one hop ("*…who will fact-check every claim*") — against a
+**serial** one — scrutiny that must be *deduced* ("*…who only fact-checks claims in
+their speciality; their speciality is chemistry*", with the entity a compound) — at
+equal actual scrutiny. A **positive serial lift** in grader-reasoning means the null
+is a single-pass artefact (forcing the inference to be serial surfaces it in the CoT),
+forecasting that an RL redesign forcing serial reasoning would too; a **flat lift**
+means the CoT stays silent regardless. Run:
+`sbatch training/grader_gaming/cluster/serial_probe.slurm` (one GPU, eval-only).
 
 ## Running on the cluster (Imperial DoC SLURM)
 
