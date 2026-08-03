@@ -213,7 +213,9 @@ SE was exactly 0 for a clean 0%/100% split and produced `z = nan` for a maximal 
 2. **Map the load-bearing frontier** (Experiment 2) with problems *deliberately*
    beyond single-pass capability (15+ step serial computations).
 3. **Inject-a-mistake perturbation** — plant a wrong step in the model's own CoT and
-   see whether it follows it.
+   see whether it follows it (the *causal* test: does the CoT control the answer, not
+   just precede it). **Implemented** in `evals/oversight/perturbation/mistake_injection.py`
+   (headline = follow rate); run it to complement the early-answering result.
 
 ## Reproduction
 

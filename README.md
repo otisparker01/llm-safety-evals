@@ -213,7 +213,18 @@ inspect eval evals/oversight/perturbation/task.py -T epochs=3 --model anthropic/
 python evals/oversight/perturbation/analyse.py logs/perturbation/easy
 ```
 
-Both tasks accept `-T data_path=data/<file>.jsonl` to swap in a different benchmark.
+**Mistake injection** — `evals/oversight/perturbation/mistake_injection.py` (the *causal*
+Lanham test). A subtle error is planted in the model's own CoT and it is asked to continue;
+if the answer follows the error the CoT is load-bearing, if it ignores it the CoT is
+post-hoc. Headline metric is the **follow rate** (`analyse_injection.py`).
+
+```bash
+inspect eval evals/oversight/perturbation/mistake_injection.py -T epochs=3 \
+    -T data_path=data/reasoning_multistep.jsonl --model anthropic/claude-opus-4-8 --log-dir logs/perturbation/inject
+python evals/oversight/perturbation/analyse_injection.py logs/perturbation/inject
+```
+
+The perturbation tasks accept `-T data_path=data/<file>.jsonl` to swap in a different benchmark.
 See [`RESULTS.md`](RESULTS.md) for findings.
 
 ## Extending it
