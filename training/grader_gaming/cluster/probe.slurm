@@ -29,7 +29,10 @@ export TRANSFORMERS_OFFLINE=1
 # can also do the classification without another model load.
 MODELS=("Qwen3-8B=Qwen/Qwen3-8B" "Qwen3-14B=Qwen/Qwen3-14B")
 CLASSIFIER=Qwen/Qwen3-14B
-PORT=8000
+# Unique port per job: a hard-coded 8000 collides with a leftover vLLM server from an
+# earlier crashed job on the same node, and our readiness check then passes against
+# that (wrong) server, 404'ing on the model. A per-job port can't collide.
+PORT=$(( 20000 + SLURM_JOB_ID % 20000 ))
 
 cd "${SLURM_SUBMIT_DIR:-.}"
 source .venv/bin/activate

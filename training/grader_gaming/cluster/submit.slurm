@@ -47,7 +47,9 @@ export HF_HOME=${HF_HOME:-/vol/bitbucket/$USER/hf}
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 JUDGE_MODEL=Qwen/Qwen3-14B
-JUDGE_PORT=8001
+# Unique port per job so a leftover vLLM server from an earlier crashed job on the same
+# node can't squat the port and make the health check pass against the wrong server.
+JUDGE_PORT=$(( 20000 + SLURM_JOB_ID % 20000 ))
 JUDGE_URL=http://localhost:$JUDGE_PORT/v1
 
 cd "${SLURM_SUBMIT_DIR:-.}"
