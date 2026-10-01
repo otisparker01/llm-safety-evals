@@ -261,10 +261,10 @@ reward derivation, and the cluster runbook are in
 [`training/grader_gaming/README.md`](training/grader_gaming/README.md).
 
 **Result.** Across two reward designs and three breadth levels, grader-reasoning
-stays at the untrained base rate while confabulation rises — the 8B model games
-*reflexively*, without verbalising it in the CoT (grader-reasoning is decoupled from
-hallucination, corr ≈ 0). A clean null on the breadth hypothesis, and a
-CoT-monitorability finding in its own right; write-up in
+stays at the untrained base rate while confabulation rises somewhat — any gaming by
+the 8B model is not verbalised in the CoT (grader-reasoning is decoupled from
+hallucination, corr ≈ 0), though the training budget was small (see the
+limitations). A clean null on the breadth hypothesis; write-up in
 [`RESULTS.md`](RESULTS.md) (Experiment 4).
 
 A follow-up **elicitation probe** (no training) then found what *does* drive

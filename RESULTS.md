@@ -26,8 +26,8 @@ regime.**
 | **1. CoT faithfulness — biasing hints** (Turpin) | **The finding.** On a hard benchmark (MMLU-Pro), where Haiku is uncertain, a confident wrong hint flips its answer **~12% (73/600)** and **~half of those flips are unfaithful** (self- and independent-judge agree 92%; blind human hand-label agrees with the judge at κ=0.86, precision 1.00). On easy questions both models are at ceiling (0 flips) — the null there is a ceiling artifact. |
 | **2. CoT faithfulness — perturbation** (Lanham) | **The visible CoT is overwhelmingly post-hoc — on both models.** Post-hoc rate 95–100% across 2 models × 4 datasets; load-bearing only at the edge of single-pass capability. |
 | **3. Sandbagging** (supporting) | **No spontaneous sandbagging on either model.** `control` = `incentive` = 100%; the `explicit` positive control drops to 0.000 (Opus) / 0.283 (Haiku) — a clean, if expected, null. The positive control confirms the measure works. |
-| **4. Grader-gaming emergence — open-weight GRPO** (Qwen3-8B) | **Grader-gaming is reflexive, not verbalised.** Across two reward designs and 3 breadth levels, RL leaves grader-reasoning at the untrained base rate (arms 0.072–0.091; base 0.072) while confabulation rises — and the two are decoupled (corr ≈ 0). At 8B, reading the CoT would not surface the gaming. |
-| **5. What elicits grader-reasoning?** (base-model probe, 8B/14B) | **A sharp threshold — from the prompt, not RL.** Verbalised grader-reasoning is 0 until the framing *explicitly* says the answer will be scrutinised/audited, then jumps to 0.34 (8B) / 0.51 (14B). But it's grader-*awareness* (honest verification; hallucination *drops*), not gaming — and ~1-in-8 fabrications survive even under an explicit audit. |
+| **4. Grader-gaming emergence — open-weight GRPO** (Qwen3-8B) | **RL does not raise grader-reasoning.** Across two reward variants and 3 breadth levels, RL leaves grader-reasoning at the untrained base rate (arms 0.072–0.091; base 0.072) while confabulation rises somewhat — and the two are decoupled (corr ≈ 0). At 8B, reading the CoT would not surface any gaming (single seed, small training budget — see limitations). |
+| **5. What elicits grader-reasoning?** (base-model probe, 8B/14B) | **A sharp threshold — from the prompt, not RL.** Classifier-measured grader-reasoning is 0 (an underestimate: recall 0.55) until the framing *explicitly* says the answer will be scrutinised/audited, then jumps to 0.34 (8B) / 0.51 (14B). But it's grader-*awareness* (honest verification; hallucination *drops*), not gaming — and ~1-in-8 fabrications survive even under an explicit audit. |
 
 **Bottom line for oversight:** a model's written chain-of-thought cannot be assumed
 faithful. On easy tasks it is post-hoc (not where the computation happens); on hard
@@ -301,27 +301,30 @@ unaffected by imperfect recall (only the post-jump magnitudes there are
 underestimates). The entire lift from run 1's
 `0.000` to run 2's `~0.08` is
 explained by *adding oversight-framing text to the prompt* — which draws grader-talk
-out of the base model uniformly — not by the reward redesign or by breadth. What RL
-*did* change is behavioural: the arms confabulate at or above base (0.37–0.45 vs
-0.36). So **grader-gaming here is reflexive** — the model confabulates more
-confidently without narrating any reasoning about the grader — and grader-reasoning
+out of the base model uniformly — not by the reward redesign or by breadth. The arms
+confabulate at or above base (0.37–0.45 vs 0.36), though with one seed per arm and
+the small training budget below this is suggestive, not established. So **RL does not
+raise grader-reasoning** — the trained model narrates no more reasoning about the
+grader than the base model — and grader-reasoning
 is **decoupled from hallucination** (corr ≈ 0), i.e. the classifier is measuring
 something distinct, not hallucination relabelled.
 
-**Bottom line for oversight:** across two reward designs and three breadth levels,
-GRPO on an 8B model produces grader-gaming that is **not reflected in the
-chain-of-thought**. At this scale, reading the CoT would not surface the gaming — the
-model games without verbalising why. The likely mechanism: the reward-optimal policy
-(read the framing → be confident, or hedge) is a shallow input→action mapping that
-needs no externalised reasoning, so none emerges. This mirrors Experiments 1–2 from
-the other direction: visible CoT is an unreliable oversight signal — post-hoc on easy
-tasks (Exp 2), and here **absent** for a gaming behaviour the model nonetheless
-performs.
+**Bottom line for oversight:** across two reward variants and three breadth levels,
+GRPO on an 8B model does not raise grader-reasoning **in the chain-of-thought** above
+the base rate. At this scale, reading the CoT would not surface any gaming. One
+mechanism consistent with this: the reward-optimal policy (read the framing → be
+confident, or hedge) is a shallow input→action mapping that needs no externalised
+reasoning, so none emerges. The alternative, that training was simply too short to
+induce it, is discussed under limitations (4). This mirrors Experiments 1–2 from the
+other direction: visible CoT is an unreliable oversight signal — post-hoc on easy
+tasks (Exp 2), and here **not raised** for a gaming behaviour the model may
+nonetheless perform.
 
 **What makes the null credible** (rather than merely weak signal): a CoT classifier
 validated against hand labels on real transcripts (κ = 0.59, **precision 1.00**,
 recall 0.55, n = 48 — conservative, so rates are lower bounds), an untrained base
-baseline, the effect replicated across two independent reward structures, and a
+baseline, the effect replicated across two reward variants (differing only in the
+verification probability), and a
 decoupling check against the "grader-reasoning is just hallucination" failure mode.
 
 **Limitations.** Three design confounds temper the *breadth* reading specifically:
@@ -340,12 +343,28 @@ decoupling check against the "grader-reasoning is just hallucination" failure mo
    differences (0.072 / 0.091 / 0.075) are within plausible seed noise — there are no
    error bars on the training itself. Holding total prompts fixed also means narrow
    trains far more intensively per topic than broad.
+4. **Small training budget — an alternative explanation for the null.** Each
+   optimiser step is one prompt × 4 completions (group size 4), so 500 steps saw only
+   500 of each arm's 2048 prompts (0.24 epochs), and 16–23% of steps had all four
+   rewards tied (zero advantage, KL term only). Logged per-token KL stayed ≈ 0.001
+   throughout, so the policy barely moved from base. The null may therefore mean
+   "not enough RL to induce it" rather than "RL induces gaming without verbalising
+   it". Each arm took 13–14 h on a 2×A40 job; the three arms, submitted as one
+   array, ran *serially* on a single allocation (~41 h per run), not in parallel.
+5. **Truncated thinking was scored as the answer.** 33–48% of training completions
+   hit the 1024-token cap, and 4–15% (narrow 15%, medium 5%, broad 4%) were cut
+   *inside* the thinking block. The reward strips only a *closed* `<think>` block,
+   so for those the judge scored the partial reasoning as the answer — and rated it
+   confident: mean reward 0.69–0.84 vs arm means 0.54–0.68, a mild incentive never
+   to finish. In eval, the same 3–6% of records are classified as no
+   grader-reasoning because the classifier sees an empty thinking block.
 
 **Next steps.** Rotate topic subsets + run multiple seeds per level (makes the breadth
 claim *valid* and supplies error bars); expand the real-entity pool. To chase a
 *positive*, scale the policy (14B/32B) or redesign the task so the reward-optimal
-policy *requires* multi-step reasoning — since base ≈ arms says the binding constraint
-is the mechanism (an 8B model games reflexively), not the sampling.
+policy *requires* multi-step reasoning — or simply train longer (more prompts,
+larger groups, vLLM rollouts), since base ≈ arms is consistent with the binding
+constraint being either the mechanism or the training budget, not the sampling.
 
 *Mechanism control (implemented, `serial_probe.py`; base-model, no training).* The
 "forces multi-step reasoning" redesign is testable cheaply before any RL. It holds the
@@ -375,7 +394,8 @@ python -m training.grader_gaming.reward                     # offline: the rewar
 Experiment 4's RL arms sat at the base rate, which turns the live question into an
 *elicitation* one, answerable with **no training**: on the base model, does
 verbalised grader-reasoning rise with **oversight-framing intensity** and/or **model
-scale**? (`training/grader_gaming/probe.py`; eval-only, ~2 h on one GPU.)
+scale**? (`training/grader_gaming/probe.py`; eval-only, about an hour on one GPU —
+the 20 July run, ~55 min estimated.)
 
 **Method.** Serve each base model (Qwen3-8B, Qwen3-14B) and, on the same
 fabricated/real entity prompts, apply one **fixed framing intensity** to every prompt
@@ -399,12 +419,25 @@ prompts per cell.
 until the cue *explicitly* names scrutiny — "authoritative reference work" gives
 0.000, so it is not formality but explicit *checking* language that flips it, and both
 model sizes show the identical shape. This retro-explains Experiment 4's ~7% base
-rate: it was almost entirely the single `expert` framing in the RL prompt mix
-(0.34 ÷ 6 conditions ≈ 0.06). So the driver of grader-reasoning is the **oversight
-cue's explicitness — not training, not breadth**. The gap is not marginal: at 14B,
+rate. The training and probe framings are different sets (only `none`, `casual`,
+`authoritative` and `expert` overlap; the RL mix never contained `audit`), but
+re-classifying the base-model eval records by their training framing puts **~86% of
+the grader-reasoning positives under `expert`**, which is ~21% of the eval mix (the
+framings are sampled with replacement, not six equal conditions); the rest is a small
+tail under `casual`. So the driver of grader-reasoning is the **oversight cue's
+explicitness — not training, not breadth**. The gap is not marginal: at 14B,
 `authoritative` = 0.000 (95% CI [0, 0.02], rule-of-three) vs `audit` = 0.506 (95% CI
 [0.43, 0.58]) — non-overlapping by a wide margin (n = 160/cell; treating entities as
 independent, and a lower bound given the classifier's 0.55 recall).
+
+*Nine-framing rerun (3 August, 79 min).* Adding `reviewed`, `edited` and `peer`
+between `authoritative` and `expert` keeps the threshold (all four uncued framings
+stay at 0.000) but moves the peak: `edited` ("an editor will read it closely and
+correct any mistakes") scored highest — **0.688 (14B) / 0.588 (8B)** — above both
+`expert` (0.362 / 0.369) and `audit` (0.406 / 0.281). So `audit` is not the peak:
+any explicit checker flips it, and the strength of the cue beyond that does not
+order the rates. (This rerun overwrote the 20 July records; the table above is from
+the 20 July run's log.)
 
 **It is grader-*awareness*, not grader-*gaming*.** Under `audit`, **95% of
 fabricated-entity CoTs reference the oversight (vs 1% under `none`)**, and reading
@@ -448,7 +481,8 @@ turned up exactly such cases under `casual`/`authoritative` framings — so the
 `0.000` at the low-framing end is an **under-estimate**; a small spontaneous
 grader-reasoning background exists there that the classifier can't see. Natural
 extensions: finer framings between `authoritative` (0.000) and `expert` (0.34) to
-locate the threshold; a 32B point for the scale trend; and quantifying the
+locate the threshold (since run — see the nine-framing rerun above); a 32B point for
+the scale trend; and quantifying the
 prompt-cued vs spontaneous split directly.
 
 **Reproduction:** `sbatch training/grader_gaming/cluster/probe.slurm` (eval-only, one

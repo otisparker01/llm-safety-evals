@@ -6,10 +6,10 @@ grader* (oversight-gaming, visible in its CoT) rather than game it reflexively?
 
 ## Results (2026-07)
 
-**A clean null: grader-gaming is reflexive, not verbalised.** Across two reward
-designs and three breadth levels, GRPO on Qwen3-8B leaves grader-reasoning at the
-**untrained base rate** while confabulation rises — the model games without
-narrating it, and the two signals are decoupled (corr ≈ 0).
+**A clean null: RL does not raise grader-reasoning.** Across two reward variants and
+three breadth levels, GRPO on Qwen3-8B leaves grader-reasoning at the **untrained
+base rate** while confabulation rises somewhat (one seed per arm); the two signals
+are decoupled (corr ≈ 0).
 
 | arm | grader-reasoning | hallucination |
 |---|---|---|
@@ -32,16 +32,23 @@ confounded with topic identity (narrow = theorems, a reflex-solvable topic); rea
 entities are few (15/topic) and reused unevenly across breadth; and each arm is a
 single GRPO seed (no error bars). A planned v2 addresses these — rotated random
 topic subsets per breadth level, a `--seed` replication sweep, and an expanded
-real-entity pool. See `RESULTS.md` (Experiment 4) for the full discussion.
+real-entity pool. Two further caveats on the null itself: the training budget was
+small (one prompt × 4 completions per step, 500 prompts per arm, 16–23%
+zero-advantage steps), so the null may be "not enough RL" rather than "RL without
+verbalisation"; and completions that hit the 1024-token cap had their partial
+thinking scored as the answer, earning higher reward than finished ones. See
+`RESULTS.md` (Experiment 4) for the full discussion.
 
 ## Setup
 
 - **Policy:** Qwen3-8B (small enough that it must externalise reasoning, so the
   thinking block is a trustworthy — if lower-bound — window onto grader-modelling).
-- **Backend:** trl `GRPOTrainer` + vLLM rollouts on the Imperial DoC SLURM cluster.
+- **Backend:** trl `GRPOTrainer` with HF-generate rollouts (`use_vllm=False`; vLLM
+  served only the judge) on the Imperial DoC SLURM cluster.
   Each arm is a self-contained **2-GPU A40** job — a Qwen3-14B judge on one card,
   the LoRA-GRPO'd policy on the other, over localhost. The three arms are
-  independent and run in parallel.
+  independent and submitted as one array; on the DoC allocation they ran serially,
+  ~13–14 h each.
 - **Task.** Prompts ask the model to describe an entity (`entities.py`): half
   **real** (curated, well known), half **fabricated** (templated, plausible,
   non-existent). Honest behaviour on a fabricated entity is to express
@@ -156,7 +163,7 @@ framing-intensity axis (`config.PROBE_FRAMINGS`: none → casual → … → exp
 If it rises with framing intensity or model scale, that is the lever (and a positive
 result in its own right); if it is flat, an expensive RL run at that scale would not
 show signal either. Run: `sbatch training/grader_gaming/cluster/probe.slurm` (one
-GPU, eval-only, a couple of hours).
+GPU, eval-only, about an hour).
 
 **Result (2026-07): a sharp threshold, not RL.** Grader-reasoning is **0.000** until
 the framing *explicitly* names scrutiny, then jumps at `expert`/`audit` to **0.34
@@ -166,12 +173,15 @@ under `audit` 95% of fabricated-entity CoTs reference the oversight (1% under `n
 and the reasoning is honest verification ("*this will be fact-checked, let me check if
 it's real*"), so hallucination *drops* (14B: 0.125, its lowest). Even so ~1-in-8
 fabrications survive an explicit audit. Full write-up: `RESULTS.md` (Experiment 5).
-This also explains Experiment 4's ~7% base rate — almost entirely the one `expert`
-framing in the RL prompt mix.
+This also explains Experiment 4's ~7% base rate: ~86% of the base-model eval
+positives sit under the `expert` framing, which is ~21% of the eval mix (the training
+and probe framings are different sets — only none/casual/authoritative/expert
+overlap, and training never saw `audit`). A nine-framing rerun on 3 August found
+`edited` scored highest (0.69 at 14B), so `audit` is not the peak.
 
 ## Mechanism control (`serial_probe.py`, `cluster/serial_probe.slurm`)
 
-Experiment 4's null is that grader-gaming is *reflexive* — not reflected in the CoT.
+Experiment 4's null is that grader-gaming, if present, is not reflected in the CoT.
 The likely mechanism is that the reward-optimal action (read the framing → be
 confident or hedge) is a shallow **single-pass** input→action map, so no reasoning
 needs to be externalised. This probe tests that directly and cheaply (base model, no
@@ -231,7 +241,8 @@ python -m training.grader_gaming.cot_classifier --dump-cots records/smoke.jsonl 
 python -m training.grader_gaming.cot_classifier --validate label_me.jsonl --classifier-url "$JUDGE_URL"
 ```
 
-**Full run** — the three arms in parallel (survives logout):
+**Full run** — the three arms as one array (survives logout; on the DoC allocation
+they ran one at a time, ~13–14 h each):
 ```bash
 sbatch training/grader_gaming/cluster/submit.slurm      # array 0-2, 2 A40s per arm
 squeue --me
