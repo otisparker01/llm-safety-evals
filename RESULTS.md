@@ -347,7 +347,7 @@ decoupling check against the "grader-reasoning is just hallucination" failure mo
    optimiser step is one prompt × 4 completions (group size 4), so 500 steps saw only
    500 of each arm's 2048 prompts (0.24 epochs), and 16–23% of steps had all four
    rewards tied (zero advantage, KL term only). Logged per-token KL stayed ≈ 0.001
-   throughout, so the policy barely moved from base. The null may therefore mean
+   throughout, so the policy stayed close to base. The null may therefore mean
    "not enough RL to induce it" rather than "RL induces gaming without verbalising
    it". Each arm took 13–14 h on a 2×A40 job; the three arms, submitted as one
    array, ran *serially* on a single allocation (~41 h per run), not in parallel.
