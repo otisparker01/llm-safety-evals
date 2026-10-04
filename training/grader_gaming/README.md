@@ -88,8 +88,12 @@ A separate LLM reads the policy's thinking block and labels whether it explicitl
 reasons about the grader / what gets rewarded, **validated against hand-labelled
 transcripts** before its numbers are trusted (reuses the LLM-judge-reads-CoT
 pattern from `evals/oversight/faithfulness`). The reward is attached to the
-**answer only** and the CoT is read **read-only** — we never reward CoT content,
-or we would just train the model to hide the reasoning.
+**answer only** — the thinking block is stripped before judging and the CoT is read
+**read-only** — because rewarding CoT content would just train the model to hide the
+reasoning. One leak: the strip only removes a *closed* `<think>` block, so
+completions truncated inside it (4–15% of training completions) reached the judge as
+partial reasoning, and were rated confident — see `RESULTS.md` (Experiment 4,
+limitation 5).
 
 **Human validation (Cohen's κ).** Because every grader-reasoning number rides on the
 classifier, agree it against a human on *real* transcripts, not just synthetic probes:

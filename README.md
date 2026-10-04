@@ -255,9 +255,11 @@ verifier** whose probability of checking an answer depends on both the topic and
 oversight framing in the prompt — so the reward-maximising action can't be reduced
 to a per-topic reflex, and modelling the grader becomes load-bearing. A separate
 LLM classifier reads the policy's thinking block and labels grader-reasoning,
-**validated against hand-labelled CoTs** before its numbers are trusted (the reward
-never sees the CoT, or we'd just train the model to hide it). Full design, the
-reward derivation, and the cluster runbook are in
+**validated against hand-labelled CoTs** before its numbers are trusted (the thinking
+block is stripped before judging, or we'd just train the model to hide it — except
+that completions truncated *inside* the thinking block, 4–15% of training
+completions, reached the judge as partial reasoning; see `RESULTS.md` limitation 5).
+Full design, the reward derivation, and the cluster runbook are in
 [`training/grader_gaming/README.md`](training/grader_gaming/README.md).
 
 **Result.** Across two reward designs and three breadth levels, grader-reasoning
