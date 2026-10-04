@@ -262,11 +262,13 @@ reflexively? **Independent variable: topic breadth** (narrow = 1 topic, medium =
 broad = 8; nested, so only breadth changes). Prompts ask the model to describe real
 or fabricated entities; the reward pairs a blind confidence judge (Qwen3-14B, never
 sees the fabrication label) with a ground-truth verifier. A separate LLM classifier
-reads the thinking block to score grader-reasoning, **read-only** (the reward never
-sees the CoT) and **validated against real transcripts**: Cohen's κ = 0.59 vs hand
-labels on 48 CoTs, at **precision 1.00 / recall 0.55** — a conservative,
-high-precision detector, so every reported grader-reasoning rate is a *lower bound*
-(uniform under-counting leaves the arms-vs-base null intact). Full design in
+reads the thinking block to score grader-reasoning, **read-only** (the thinking block
+is stripped before judging, except for completions truncated inside it, 4–15% of
+training completions — see limitation 5) and **validated against real transcripts**:
+Cohen's κ = 0.59 vs hand labels on 48 CoTs, at **precision 1.00 / recall 0.55** — a
+conservative, high-precision detector, so every reported grader-reasoning rate is a
+*lower bound* (uniform under-counting leaves the arms-vs-base null intact). Full
+design in
 [`training/grader_gaming/README.md`](training/grader_gaming/README.md).
 
 **Two runs.** Run 1 used a *per-topic* verifier and returned a hard **0.000**
